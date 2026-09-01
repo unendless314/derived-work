@@ -10,13 +10,23 @@ set -e -o pipefail  # fail-fast, including failures within pipelines
 WORKSPACE="${WORKSPACE:-/path/to/your/exopolitics}"
 SITE_DIST="${SITE_DIST:-/var/www/your-site}"
 WEB_USER="${WEB_USER:-www-data}"
+LOG_DIR="${LOG_DIR:-$WORKSPACE/logs}"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+BUILD_LOG="$LOG_DIR/site-build-${RUN_ID}.log"
+
+mkdir -p "$LOG_DIR"
 
 echo "[$(date -u +%H:%M:%S)] Site Build Run: $RUN_ID"
 echo "[$(date -u +%H:%M:%S)] Starting Astro build..."
 
 cd "$WORKSPACE/modules/site"
-npm run build 2>&1 | grep -E "(Complete|page\(s\) built|error)" | tail -5
+if ! npm run build >"$BUILD_LOG" 2>&1; then
+    echo "[$(date -u +%H:%M:%S)] Site build failed. Last 100 log lines:"
+    tail -n 100 "$BUILD_LOG"
+    exit 1
+fi
+
+grep -Ei "(complete|page\(s\) built|error)" "$BUILD_LOG" | tail -5 || true
 
 echo "[$(date -u +%H:%M:%S)] Deploying to $SITE_DIST..."
 rsync -a --delete "$WORKSPACE/modules/site/dist/" "$SITE_DIST/"
