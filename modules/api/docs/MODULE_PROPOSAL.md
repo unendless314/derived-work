@@ -1,8 +1,8 @@
 # `api` Module Proposal
 
-**Status:** Proposal v1.9 — six external review rounds incorporated. **Phase A (mechanical split of publish's orchestrator) is completed and passed independent code review (2026-08-17)**. **Phase B1 (generation + atomic pointer) landed 2026-08-18** — the publish export is now generation + `current.json` pointer based, and the site-side consumption (resolver, pointer-driven "last updated", generationized fixture) landed with it. **Phase B2 (hardlink reuse optimization) landed 2026-08-22** without changing the reader-visible contract. This module stays at documentation stage and is not implemented. Refactor basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7.
+**Status:** Proposal v1.10 — **approved for implementation (owner decision, 2026-09-02)**; deployment and authentication decisions landed (§6, §8). Six external review rounds incorporated. **Phase A (mechanical split of publish's orchestrator) is completed and passed independent code review (2026-08-17)**. **Phase B1 (generation + atomic pointer) landed 2026-08-18** — the publish export is now generation + `current.json` pointer based, and the site-side consumption (resolver, pointer-driven "last updated", generationized fixture) landed with it. **Phase B2 (hardlink reuse optimization) landed 2026-08-22** without changing the reader-visible contract. Refactor basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7.
 **Proposed:** 2026-08-17
-**Reversal plan:** delete `modules/api/` entirely. No top-level docs (including `docs/MODULE_BOUNDARIES.md`) have been modified; no other module is affected.
+**Reversal plan:** delete `modules/api/` entirely and revert the §10 top-level doc additions once landed; no other module is affected.
 
 ---
 
@@ -30,7 +30,7 @@ The site is a breaking-news aggregator with strong timeliness. Deep-reader queri
 Two consequences:
 
 1. **Event-time semantics.** Filtering and sorting use `source_published_at` (when the external source published the item) — the only export timestamp referring to the external world. Internal processing timestamps (`approved_at`, `published_at`, `upstream_updated_at`) are reference-only.
-2. **Recent-window scope.** v1 reads `index.json` (latest 1,000 items, sorted by `source_published_at` descending, ~34 days of event time at verification) plus per-slug joins into `items/`. No full-set scan, no archives stitching. See `API_CONTRACT.md` §3–§5.
+2. **Recent-window scope.** v1 reads `index.json` (latest 1,000 items, sorted by `source_published_at` descending, ~34 days of event time at verification) plus per-slug joins into `items/`. No full-set scan, no archives stitching. See `API_CONTRACT.md` §3–§4 and `DATA_DEPENDENCIES.md`.
 
 ## 3. Rationale
 
@@ -60,7 +60,7 @@ Review round 2 surfaced that export reads are unsafe without a generation marker
 - The writer-side fix deletes complexity in publish itself (per-file promote, per-file backups, promotion journal, withdrawal/language-shrink sweeps all simplify) and benefits every current and future consumer of the export, including `site`.
 - The pattern already has an accepted pending precedent in this repo: `known_issues/SITE_RELEASE_POINTER_PROMOTION_PROPOSAL.md`.
 
-Consequence: **api implementation was gated on the publish refactor, by design and by preference.** Phase B1 — the part that establishes the reader-visible contract this module depends on — has since landed (2026-08-18); Phase B2 (hardlink reuse optimization) landed 2026-08-22 as an independent batch that did not change generation immutability or the reader protocol. The refactor is complete; the module stays at documentation stage until the owner green-lights implementation. The refactor basis is archived in `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` (v7).
+Consequence: **api implementation was gated on the publish refactor, by design and by preference.** Phase B1 — the part that establishes the reader-visible contract this module depends on — has since landed (2026-08-18); Phase B2 (hardlink reuse optimization) landed 2026-08-22 as an independent batch that did not change generation immutability or the reader protocol. The refactor is complete; the module received implementation approval on 2026-09-02. The refactor basis is archived in `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` (v7).
 
 ## 4. Proposed Boundary Definition
 
@@ -91,42 +91,39 @@ The module exposes **its own** contract externally, but v1 response field names 
 
 ## 6. Technical Direction
 
-- **Stack:** FastAPI (the pipeline is already Python; `pipeline.sh`, `pytest`)
-- **Deployment:** local service bound to `127.0.0.1` only; no authentication required at this stage
-- **Data layer:** reads `current.json` → resolves the generation directory → `index.json` + per-slug `items/` joins; no database driver needed
-- **First endpoint:** `GET /v1/articles?event_from=...&event_to=...&language=...&limit=...&cursor=...` — full contract in `API_CONTRACT.md`
+- **Stack:** FastAPI (the pipeline is already Python; `pipeline.sh`, `pytest`), pinned in `modules/api/requirements.txt` (owner decision, 2026-09-02).
+- **Deployment (owner decision, 2026-09-02):** the API process binds `127.0.0.1` only and sits behind the existing nginx + Let's Encrypt TLS reverse proxy on the production VPS (`https://exopolitics.tw`, Hetzner NBG1, shared with the site and its hourly pipeline timer). The sole caller — an AI agent on the owner's home machine — reaches it over the public internet, so the original "no authentication required at this stage" assumption is **revoked**: v1 requires a single long-lived Bearer token as an anti-abuse measure (the content served is public site data; this is not a confidentiality control). Details in `EXECUTION_POLICY.md`.
+- **Data layer:** reads `current.json` → resolves the generation directory → `index.json` + per-slug `items/` joins; no database driver needed.
+- **First endpoint:** `GET /v1/articles?event_from=...&event_to=...&language=...&limit=...&cursor=...` — full contract in `API_CONTRACT.md`.
 
 ## 7. Upstream Precondition (met for Phase B1)
 
-**Phase B1 of the publish generation-pointer refactor** (`known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7) landed on 2026-08-18. The assumptions this contract was written against are now live behavior:
+**Phase B1 of the publish generation-pointer refactor** (`known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7) landed on 2026-08-18. The assumptions this contract was written against are now live behavior, re-verified against the live generation on 2026-09-02 (see `DATA_DEPENDENCIES.md` §2):
 
-1. **Generation consistency:** pre-B1 promotion was per-file and non-atomic, with withdrawal cleanup interleaved. Generation directories are now immutable and `current.json` switches atomically — content drift during a read is impossible by construction. One narrow retry remains: if retention sweeps the resolved generation at any point during the read flow, the reader re-resolves the pointer and re-runs the flow once before returning `503` (see `API_CONTRACT.md` §7).
+1. **Generation consistency:** pre-B1 promotion was per-file and non-atomic, with withdrawal cleanup interleaved. Generation directories are now immutable and `current.json` switches atomically — content drift during a read is impossible by construction. One narrow retry remains: if retention sweeps the resolved generation at any point during the read flow, the reader re-resolves the pointer and re-runs the flow once before returning `503` (see `API_CONTRACT.md` §5).
 2. **Language authority:** the pointer's `languages` list is the single source of truth; directory existence is not evidence (publish's own orchestration said so even before the refactor).
 3. **Freshness signaling:** the pointer carries `export_completed_at` and `last_successful_run_at`, letting the agent distinguish "no news today" from "export not updated yet".
 
-Phase B2 (hardlink reuse optimization) landed 2026-08-22 as an independent batch; it did not change the reader-visible contract above. The api module itself remains at documentation stage.
+Phase B2 (hardlink reuse optimization) landed 2026-08-22 as an independent batch; it did not change the reader-visible contract above.
 
 Deferred upstream item (not a blocker): `category` in export items — only if a future consumer needs classification in the reading list.
 
 ## 8. Open Questions
 
-1. Deployment form: always-on local service vs. on-demand startup?
-2. If non-local agents ever need access, what is the authentication strategy?
-3. Does read-only access to the export make the deep-reader trigger naturally post-publish (resolving the trigger-timing question in the strategy notes)?
-4. Freshness SLA default (`freshness_sla_hours`, currently 48): should it track the actual pipeline cadence once observed?
+Resolved at approval (owner decisions, 2026-09-02):
+
+1. ~~Deployment form: always-on local service vs. on-demand startup?~~ — CLI-launched service (`python -m modules.api.src.cli serve`) running under systemd on the production VPS; nginx terminates TLS and proxies to the loopback-bound process. See `EXECUTION_POLICY.md`.
+2. ~~If non-local agents ever need access, what is the authentication strategy?~~ — the caller is non-local by design (agent on the owner's home machine, one short batch query per day), so v1 ships with a single long-lived Bearer token as an anti-abuse measure; no per-client, OAuth, or rotation machinery until a second caller exists.
+3. ~~Does read-only access to the export make the deep-reader trigger naturally post-publish?~~ — resolved by the clarified caller scenario: the agent polls on its own daily cadence; the `coverage` freshness semantics in `API_CONTRACT.md` §4 let it distinguish "no news" from "pipeline stale" without a post-publish hook.
+4. ~~Freshness SLA default (`freshness_sla_hours`, currently 48)~~ — the observed pipeline cadence is hourly (`exopolitics-pipeline.timer`), so the default tracks it: `freshness_sla_hours: 6` (six consecutive missed runs before `data_may_be_stale` flips), configurable in `config/api_settings.yaml`.
+
+Remaining: none blocking v1.
 
 ## 9. Scope of This Proposal
 
-Included now:
+This proposal was **approved on 2026-09-02**. The module doc set is now: `README.md` (entry point), `API_CONTRACT.md` (wire contract), `DATA_DEPENDENCIES.md` (read scope and pointer validation), `EXECUTION_POLICY.md` (deployment, authentication, caching, freshness), and `IMPLEMENTATION_PLAN.md` (phases and test focus). This proposal is retained as the historical decision record (`site/docs/DESIGN_PROPOSAL.md` precedent).
 
-- this proposal document
-- `API_CONTRACT.md` — v1.8 contract draft rebased onto the generation-pointer layout
-
-Deliberately excluded until this proposal is approved (the publish refactor is complete: Phase B1 landed 2026-08-18, Phase B2 landed 2026-08-22):
-
-- changes to any top-level doc
-- `src/`, `config/`, `tests/` scaffolds
-- any executable code
+With approval granted, `src/`, `config/`, and `tests/` scaffolds and executable code are in scope; per §10 the top-level doc updates land in the same implementation change.
 
 ## 10. On Approval, the Implementation Change Must Also Update
 
@@ -137,4 +134,3 @@ Deliberately excluded until this proposal is approved (the publish refactor is c
 - `docs/DATA_LIFECYCLE.md` — record `api` as a downstream consumer of publish exports
 - `docs/IMPLEMENTATION_ROADMAP.md` — add the `api` work item
 - `AGENTS.md` — module list and ownership rules, if it enumerates modules
-

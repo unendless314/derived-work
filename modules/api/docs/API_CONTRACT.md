@@ -1,7 +1,7 @@
 # `api` Module — v1 Contract Draft
 
-**Status:** Draft v1.8 — the publish refactor is complete: Phase B1 landed 2026-08-18 (generation + `current.json` pointer based export, consumed by the site through the pointer) and Phase B2 (hardlink reuse) landed 2026-08-22 without changing the reader-visible contract. Refactor basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7. The api module itself remains at documentation stage and is **not implemented**.
-**Updated:** 2026-08-22
+**Status:** Draft v1.13 — the publish refactor is complete: Phase B1 landed 2026-08-18 (generation + `current.json` pointer based export, consumed by the site through the pointer) and Phase B2 (hardlink reuse) landed 2026-08-22 without changing the reader-visible contract. Refactor basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7. The api module is **approved for implementation (owner decision, 2026-09-02)** but not yet implemented. v1.9 change: data-source/adapter-boundary and language-authority rules (v1.8 §§5–6) moved to `DATA_DEPENDENCIES.md`; v1.8 §§7–8 renumbered to §§5–6. v1.10 change (external review, 2026-09-02): error-body shape defined (§1); `429` added to the error table with edge-emission semantics (§4). v1.11 change (follow-up review, 2026-09-02): TLS-edge `502` and `504` error semantics added so upstream-process failures cannot violate the JSON response contract. v1.12 change (follow-up review, 2026-09-02): application-generated `404` and `405` responses are included in the uniform error envelope. v1.13 change (follow-up review, 2026-09-02): cursors are bound to their normalized query filters and TLS-edge `413` is included in the uniform error contract.
+**Updated:** 2026-09-02
 
 **Scope:** v1 serves the deep-reader agent only. It is deliberately not designed as a general-purpose content API; generalization decisions are deferred until a second consumer exists.
 
@@ -12,11 +12,13 @@
 ## 1. Conventions
 
 - All endpoints are prefixed with `/v1/`.
-- All responses are JSON, UTF-8.
+- All application responses, plus the documented TLS-edge errors (`413`, `429`, `502`, and `504`), are JSON, UTF-8. Low-level HTTP parsing and connection failures that occur before nginx selects `/v1/` are outside this API contract.
+- Error responses carry a JSON body of the form `{"error": {"code": "<machine-readable code>", "message": "<human-readable summary>"}}`, with optional additional fields where noted (e.g. `supported_languages` on an unsupported-language `400`).
 - The service is read-only: only `GET` is supported in v1.
 - Dates use `YYYY-MM-DD`; timestamps use ISO 8601 UTC.
 - "Today" means the current UTC date.
 - Response field names follow the publish-export naming verbatim (`display_title`, `summary_short`, `canonical_url`, ...). The adapter is a thin pass-through; it must not rename or re-derive semantics.
+- All `/v1/` endpoints require Bearer authentication; see `EXECUTION_POLICY.md` §4. (The contract data served is public site content — authentication is an anti-abuse control, not a confidentiality boundary.)
 
 ## 2. What "published" Means
 
@@ -51,9 +53,9 @@ GET /v1/articles?event_from=YYYY-MM-DD&event_to=YYYY-MM-DD&language=<code>&limit
 |:---|:---:|:---|:---|
 | `event_from` | no | today (UTC) | inclusive lower bound on `source_published_at` date |
 | `event_to` | no | today (UTC) | inclusive upper bound on `source_published_at` date |
-| `language` | no | `zh` | must be listed in `current.json` (§6); unsupported codes return `400` with the supported list |
+| `language` | no | `zh` | must be listed in `current.json` (`DATA_DEPENDENCIES.md` §3); unsupported codes return `400` with the supported list |
 | `limit` | no | `100` | max `500` |
-| `cursor` | no | — | opaque pagination token from a previous response |
+| `cursor` | no | — | opaque pagination token from a previous response for the same normalized `event_from`, `event_to`, and `language` |
 
 ### Response
 
@@ -99,17 +101,17 @@ Deliberately excluded in v1: `category` (not present in the export; adding it re
 
 - Sort: `source_published_at` descending; tie-breaker: `slug` descending (index entries carry no `source_item_id`, so `slug` is the stable tie-breaker at this layer). This makes ordering total and stable.
 - `total_count` = number of items matching the filter within the coverage window (all pages); `returned_count` = items in this response.
-- `cursor` is an opaque token encoding **the generation** plus the last `(source_published_at, slug)` of the previous page. `next_cursor` is `null` on the final page.
-- **Cursors are generation-bound.** If the pointer's generation differs from the cursor's generation (a new generation was published between pages), the request fails with `400` and error code `cursor_expired`; the client must restart from the first page. The API must never silently mix pages from two generations — that would produce gaps, duplicates, and inconsistent `total_count`.
+- `cursor` is an opaque token encoding **the generation**, normalized `event_from`, `event_to`, and `language`, plus the last `(source_published_at, slug)` of the previous page. `next_cursor` is `null` on the final page. `limit` is deliberately not cursor-bound, so a caller may safely choose a different page size for its next request.
+- **Cursors are generation- and query-bound.** If the pointer's generation differs from the cursor's generation (a new generation was published between pages), the request fails with `400` and error code `cursor_expired`; the client must restart from the first page. If the cursor's normalized date range or language differs from the request, it fails with `400` and error code `cursor_query_mismatch`; the client must restart from the first page. The API must never silently mix pages from two generations or query filters — either would produce gaps, duplicates, and inconsistent `total_count`.
 
 ### Coverage and freshness semantics
 
-- `coverage.window_from` / `coverage.window_to` describe the index window actually searched (§5).
-- `coverage.generation` / `coverage.export_completed_at` identify the export generation being served; `coverage.last_successful_run_at` is the pipeline health signal — all three come from `current.json` (§7).
+- `coverage.window_from` / `coverage.window_to` describe the index window actually searched (`DATA_DEPENDENCIES.md` §2).
+- `coverage.generation` / `coverage.export_completed_at` identify the export generation being served; `coverage.last_successful_run_at` is the pipeline health signal — all three come from `current.json` (§5).
 - **Historical gap:** a query range (partially) older than `window_from` is not an error — the API returns matches inside the window. `coverage` tells the agent that older content exists but is out of scope.
 - **Content coverage vs. pipeline health are separate signals:**
   - `request_exceeds_window_to` is `true` when the request range extends beyond `window_to` (no items in the window for the requested dates). With a healthy pipeline this can be a legitimate editorial fact: nothing new happened.
-  - `data_may_be_stale` is `true` when `last_successful_run_at` is older than the configured freshness threshold (`freshness_sla_hours`, default `48`). This means the **pipeline itself** may not have run — independent of whether content changed. (A successful run refreshes `last_successful_run_at` even when no content changed; see the refactor plan v7.)
+  - `data_may_be_stale` is `true` when `last_successful_run_at` is older than the configured freshness threshold (`freshness_sla_hours`, default `6`; see `EXECUTION_POLICY.md` §6). This means the **pipeline itself** may not have run — independent of whether content changed. (A successful run refreshes `last_successful_run_at` even when no content changed; see the refactor plan v7.)
 - **Agent guidance (normative):** when `data_may_be_stale` is `true`, the agent must report "the site's pipeline has not run recently" — never "there was no news". When only `request_exceeds_window_to` is `true` and the pipeline is fresh, the agent may report that no new items appeared in the window.
 - `coverage.items_without_event_time` counts in-window items skipped because `source_published_at` was missing or unparseable (feed metadata quality varies by source).
 
@@ -117,46 +119,18 @@ Deliberately excluded in v1: `category` (not present in the export; adding it re
 
 | Status | Condition |
 |:---|:---|
-| `400` | malformed date; `event_from` > `event_to`; unsupported `language` (error body lists supported codes from `current.json`); `limit` out of range; invalid `cursor`; `cursor_expired` (cursor generation ≠ current pointer generation — restart from page 1) |
-| `503` | export not serveable: `current.json` missing/invalid, or the generation still unresolvable after one full-flow retry (see §7); response includes `Retry-After` |
+| `400` | malformed date; `event_from` > `event_to`; unsupported `language` (error body lists supported codes from `current.json`); `limit` out of range; invalid `cursor`; `cursor_expired` (cursor generation ≠ current pointer generation — restart from page 1); `cursor_query_mismatch` (cursor language or normalized date range ≠ request — restart from page 1) |
+| `401` | missing or invalid Bearer token; response carries `WWW-Authenticate: Bearer` (see `EXECUTION_POLICY.md` §4) |
+| `429` | request rate exceeded at the TLS edge (nginx `limit_req`); JSON body with error code `rate_limited` plus a `Retry-After` header — emitted by the edge, never by the service itself in v1. Kept distinct from `503` so the caller can tell throttling apart from export/pipeline unavailability (`EXECUTION_POLICY.md` §3) |
+| `404` | no `/v1/` route matches the request; application-generated JSON body with error code `not_found` |
+| `405` | the request uses a method other than `GET` for an existing `/v1/` route; application-generated JSON body with error code `method_not_allowed` plus an `Allow: GET` header |
+| `413` | request body exceeds the nginx `/v1/` body-size limit; JSON body with error code `payload_too_large` — emitted at the TLS edge (`EXECUTION_POLICY.md` §3) |
+| `503` | export not serveable: `current.json` missing/invalid, or the generation still unresolvable after one full-flow retry (see §5); response includes `Retry-After` |
 | `500` | unreadable or malformed export data within a resolved generation |
+| `502` | nginx cannot reach the API process (for example, while systemd restarts it); JSON body with error code `api_unavailable` plus a `Retry-After` header — emitted at the TLS edge, distinct from the application's export-specific `503` (`EXECUTION_POLICY.md` §3) |
+| `504` | nginx timed out while waiting for the API process; JSON body with error code `api_timeout` plus a `Retry-After` header — emitted at the TLS edge (`EXECUTION_POLICY.md` §3) |
 
-## 5. Data Source and Adapter Boundary
-
-Responses derive exclusively from the **current generation** under `data/publish_export/` (layout per `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7, landed as Phase B1 on 2026-08-18):
-
-```text
-data/publish_export/
-  current.json                 # atomic pointer; readers' only entry point
-  generations/<generation>/
-    stats.json
-    meta.json                  # optional diagnostics
-    <lang>/index.json  items/  archives/
-```
-
-Verified export layout facts (2026-08-17, pre-refactor tree; content contracts carry over unchanged):
-
-- `index.json` holds the latest 1,000 items as slim entries, **sorted by `source_published_at` descending**; the window at verification time spanned ~34 days of event time (2026-07-02 → 2026-08-05).
-- `archives/archive_YYYY_MM.json` group by `source_published_at` month.
-- `items/` holds all full self-contained records, one JSON per slug.
-
-Given the product constraint (recent-window queries only), the v1 adapter:
-
-1. reads `current.json` and resolves the generation directory (§7),
-2. validates the requested language against the pointer's `languages` list,
-3. reads `<lang>/index.json` (one file, already in event-time order),
-4. filters by event-time range and paginates,
-5. joins matched slugs against `<lang>/items/<slug>.json` for the full-record fields (`source_item_id`, `downstream_action`).
-
-It must **not** scan `items/` wholesale and must **not** stitch `index.json` + `archives/`. The archives and any derived full-set indexing are out of scope until a second consumer with historical query demand appears.
-
-## 6. Language Support Is Not Hardcoded — and Directories Are Not Evidence
-
-The authoritative source for the supported language set is the **`languages` list in `current.json`**. Directory existence is explicitly **not** authoritative: publish's execution policy (`modules/publish/docs/EXECUTION_POLICY.md` §6.2) states that directory names are not ownership evidence, and residual directories from before a canonical reset may persist. Serving from an unlisted directory risks exposing content that is no longer configured and no longer meets published conditions.
-
-If `current.json` is missing or invalid, the API does not fall back to directory scanning — it returns `503` (§7).
-
-## 7. Read Consistency: Generation Pointer
+## 5. Read Consistency: Generation Pointer
 
 Phase B1 of the publish refactor has landed (2026-08-18): each content-changing export run produces an **immutable generation directory** and atomically switches `current.json` (single-file `os.replace`, same volume) only after the generation is complete; successful no-change runs atomically refresh `current.json.last_successful_run_at` without a new generation. A forced `rebuild` also switches the generation even when the content fingerprint is unchanged, so any generation difference — not only a fingerprint change — expires cursors (§4).
 
@@ -166,15 +140,16 @@ Read protocol per request — the **entire read flow is wrapped in a single retr
 2. Resolve `generations/<generation>/`, read `index.json`, perform the `items/` joins, and assemble the response.
 3. If **any** step of 2 fails because the generation directory (or a file within it) has vanished — including mid-join — re-read `current.json` and **re-run the whole flow once** with the new pointer. If it still fails → `503` with `Retry-After`.
 
+Pointer payload validation (field shapes, generation id format, no-fallback rules) is defined in `DATA_DEPENDENCIES.md` §4 and applies before any path is joined.
+
 Two further consistency rules:
 
 - Because generation directories are immutable after publication, **no mid-read content revalidation exists**. The retry covers exactly one failure mode: the resolved generation being swept by retention at any point during the read. Within a live generation, drift is impossible by construction.
-- Pagination does **not** follow a generation switch: cursors pin the generation they were issued from (§4), so a multi-page read never silently mixes two generations. A client that hits `cursor_expired` restarts from page 1 and gets a consistent new series.
+- Pagination does **not** follow a generation or query-filter switch: cursors pin the generation and normalized query filters they were issued from (§4), so a multi-page read never silently mixes generations or filters. A client that hits `cursor_expired` or `cursor_query_mismatch` restarts from page 1 and gets a consistent series.
 
 The consistency burden lives once in the writer (publish), not in every reader.
 
-## 8. Versioning Policy
+## 6. Versioning Policy
 
 - Breaking changes (field removal, type change, semantics change) require a new prefix (`/v2/`); `/v1/` must keep working while any consumer depends on it.
 - Additive changes (new optional fields, new optional parameters) may ship within `/v1/`.
-
