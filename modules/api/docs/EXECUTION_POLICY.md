@@ -1,11 +1,8 @@
 # API Execution Policy
 
-**Document version:** v1.3
-**Updated:** 2026-09-02
+**Document version:** v1.4
+**Updated:** 2026-09-03
 **Status:** Active draft (module approved for implementation 2026-09-02; not yet implemented)
-**v1.1 changes (external review, 2026-09-02):** loopback binding enforced in code with no configuration surface; nginx `limit_req` now defines its zone, returns JSON `429` (not HTML `503`), and `503` stays reserved for export unavailability.
-**v1.2 changes (follow-up review, 2026-09-02):** nginx-generated `502` and `504` responses now use the contract's JSON envelope and `Retry-After`; edge-generated `429`, `502`, and `504` responses also carry `Cache-Control: no-store`.
-**v1.3 changes (follow-up review, 2026-09-02):** nginx's `/v1/` request-body limit and JSON `413` response are specified so edge-generated responses retain the wire contract.
 
 ---
 
@@ -139,7 +136,7 @@ The module owns response caching policy (boundary definition §4 of the proposal
 
 - Every application response, plus the documented nginx `413`, `429`, `502`, and `504` responses, carries `Cache-Control: no-store`. Low-level HTTP parsing and connection failures that occur before nginx selects `/v1/` are outside the API contract.
 - Rationale: the sole v1 caller issues one short batch per day; caching buys nothing and adds an invalidation concern.
-- A future generation-scoped cache (e.g. `ETag` keyed on `generation + query`) is an additive change allowed under `API_CONTRACT.md` §6, to be introduced only when a second consumer justifies it.
+- A future generation-scoped cache (e.g. `ETag`) is an additive change allowed under `API_CONTRACT.md` §6, to be introduced only when a second consumer justifies it. Its key must cover the full response identity: `generation`, normalized filters, cursor/page position, `limit`, and the normalized `include` set.
 
 ---
 
@@ -152,7 +149,7 @@ Implements `API_CONTRACT.md` §5. Per request:
 3. If any step raises `FileNotFoundError`/`NotADirectoryError` — the generation was swept by retention mid-read — re-read `current.json` and re-run the entire flow **once**. A second failure → `503` + `Retry-After: 30`.
 4. A JSON parse error or schema violation in `index.json` or an item file is **not** retried: the generation is immutable, so re-reading cannot help. It maps to `500`.
 
-Memory bounds: `index.json` (~800 KB at 1,000 entries) is read whole — this is bounded by the publish-side `latest_limit` and needs no streaming. `items/` joins touch at most one page of slugs (≤ `limit`, max 500). No structure grows with total archive size.
+Memory bounds: `index.json` (~800 KB at 1,000 entries) is read whole — this is bounded by the publish-side `latest_limit` and needs no streaming. `items/` joins touch at most one page of slugs (≤ `limit`, max 500). No structure grows with total archive size. The opt-in `include=bullets` projection adds no read or memory surface: the join already loads the full item records, and the projection only controls serialization into the response.
 
 ---
 
@@ -165,7 +162,7 @@ Fail-stop, mapping to the contract error table:
 | Config invalid at startup (bad YAML, unknown key, missing token env var, nonexistent explicit export-dir override) | `validate` exits non-zero; `serve` refuses to start |
 | `current.json` missing/invalid at request time (including bootstrap) | `503` + `Retry-After: 30` |
 | Generation swept mid-read, retry exhausted | `503` + `Retry-After: 30` |
-| Malformed data inside a resolved generation | `500` |
+| Malformed data inside a resolved generation (including a malformed `bullets` shape on a requested projection — never silently omitted) | `500` |
 | Malformed parameters, unsupported language, invalid/expired cursor | `400` (unsupported language lists the supported codes; expired cursor uses code `cursor_expired`) |
 | Missing/invalid Bearer token | `401` + `WWW-Authenticate: Bearer` |
 | Request body exceeds the `/v1/` limit | `413`, JSON body — emitted by the nginx edge (§3) |

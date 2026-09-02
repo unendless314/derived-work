@@ -1,19 +1,14 @@
 # API Implementation Plan
 
-**Document version:** v1.5
-**Updated:** 2026-09-02
+**Document version:** v1.6
+**Updated:** 2026-09-03
 **Status:** Active (approved for implementation 2026-09-02)
-**v1.1 changes (external review, 2026-09-02):** `requirements.txt` explicitly pins PyYAML; loopback binding is a code constant with no configuration surface, with a test; Phase 5 gains an ops verification step for the nginx `429` JSON path.
-**v1.2 changes (follow-up review, 2026-09-02):** Phase 5 verification now covers nginx-generated `502` and `504` JSON envelopes and `Cache-Control: no-store` on every edge-generated response.
-**v1.3 changes (follow-up review, 2026-09-02):** FastAPI's framework-generated `404` and `405` responses are required to use the common error envelope, with contract tests.
-**v1.4 changes (follow-up review, 2026-09-02):** `RequestValidationError` → `400` mapping made explicit — the framework-default `422` is outside the contract and must never leak; contract test added.
-**v1.5 changes (follow-up review, 2026-09-02):** cursor identity now includes normalized query filters, and the nginx request-body `413` edge path is specified and manually verified.
 
 ---
 
 ## 1. Scope
 
-Deliver the v1 contract in `API_CONTRACT.md` over the data dependencies in `DATA_DEPENDENCIES.md`, operated per `EXECUTION_POLICY.md`. Non-goals for v1 (proposal §3.3): no archives/historical queries, no `category`, no `bullets`/`disclosure_note`/`author_metadata` fields, no second-endpoint additions, no metrics endpoint.
+Deliver the v1 contract in `API_CONTRACT.md` over the data dependencies in `DATA_DEPENDENCIES.md`, operated per `EXECUTION_POLICY.md`. Non-goals for v1 (proposal §3.3): no archives/historical queries, no `category`, no `disclosure_note`/`author_metadata` projections, no second-endpoint additions, no metrics endpoint. (`bullets` is in scope only as the opt-in `include=bullets` projection.)
 
 ---
 
@@ -31,7 +26,7 @@ modules/api/
     config.py                    # YAML loading + env precedence + strict validation
     export_pointer.py            # current.json validation + generation resolution
     adapter.py                   # index read, event-time filter, paginate, items join, coverage assembly (pure, no FastAPI)
-    cursor.py                    # opaque cursor codec: generation + last (source_published_at, slug)
+    cursor.py                    # opaque cursor codec: generation + normalized filters + include set + last (source_published_at, slug)
     app.py                       # FastAPI app, auth dependency, error mapping, Cache-Control
   tests/
     __init__.py
@@ -60,13 +55,15 @@ Conventions followed: `python -m modules.api.src.cli <command>` (publish/transla
 
 ### Phase 2 — Adapter (pure logic, no web framework)
 
-- `adapter.py`: load `<lang>/index.json`; filter by `[event_from, event_to]` on `source_published_at` **date** semantics; total ordering (`source_published_at` desc, `slug` desc); page slice; per-slug join into `items/` for `source_item_id`/`downstream_action`; coverage assembly (`window_from`/`window_to` from the in-index event-time bounds, `basis: "index"`, pointer fields, `request_exceeds_window_to`, `data_may_be_stale` per `EXECUTION_POLICY.md` §6, `items_without_event_time`).
-- `cursor.py`: opaque token encoding `generation` + normalized `event_from`, `event_to`, and `language` + last `(source_published_at, slug)`; decode validates shape, rejects foreign generations with `cursor_expired`, and rejects changed query filters with `cursor_query_mismatch`. `limit` remains request-scoped, not cursor-bound.
+- `adapter.py`: load `<lang>/index.json`; filter by `[event_from, event_to]` on `source_published_at` **date** semantics; total ordering (`source_published_at` desc, `slug` asc — matching the publish index contract); page slice; per-slug join into `items/` for `source_item_id`/`downstream_action` (plus `bullets` when requested); coverage assembly (`window_from`/`window_to` from the in-index event-time bounds, `basis: "index"`, pointer fields, `request_exceeds_window_to`, `data_may_be_stale` per `EXECUTION_POLICY.md` §6, `items_without_event_time`).
+- `adapter.py` projection: `bullets` is serialized only when `include=bullets` is requested — always the publish-verbatim value (three-key object on `publish_summary`, `null` on `publish_link`), never omitted, never re-derived; a malformed shape is a generation data failure, not a skippable field.
+- `cursor.py`: opaque token encoding `generation` + normalized `event_from`, `event_to`, `language`, and `include` set + last `(source_published_at, slug)`; decode validates shape, rejects foreign generations with `cursor_expired`, and rejects changed query filters or a changed `include` set with `cursor_query_mismatch`. `limit` remains request-scoped, not cursor-bound — the only parameter with that exception.
 - Mid-read sweep handling: the retry scope from `EXECUTION_POLICY.md` §8 lives here, so the web layer stays thin.
 
 ### Phase 3 — HTTP layer
 
 - `app.py`: FastAPI app; `GET /v1/articles`; query-param validation producing the contract's `400` bodies (including the supported-language list), with the framework's `RequestValidationError` handler overridden so malformed parameters map to that `400` envelope — FastAPI's default `422` is not part of the contract and must never leak; Bearer auth dependency (`hmac.compare_digest`, `401` + `WWW-Authenticate`); application exception handlers that make every application-generated error — including framework `404` and `405` responses — use the shared `{"error": {"code", "message", ...}}` shape (`API_CONTRACT.md` §§1, 4); `Cache-Control: no-store`; `Retry-After: 30` on `503`; error code `cursor_expired` on generation mismatch.
+- `include` validation is strict: a comma-separated list against the v1 allowlist (`bullets`); unknown values, empty entries, and duplicated entries are `400`. A **repeated `include` query key must also be `400`** — framework parameter parsing collapses or collects duplicates silently, so this check inspects the raw query string.
 - `cli.py serve` wiring uvicorn to the fixed loopback constant and the configured port.
 - Manual smoke pass against the live export (read-only) before Phase 4.
 
@@ -103,14 +100,22 @@ Query semantics:
 - default range = today (UTC); inclusive bounds; `event_from > event_to` → `400`; malformed date → `400`
 - `limit` default 100, max 500, out-of-range → `400`
 - framework validation failures never leak FastAPI's default `422`: every malformed-parameter response is the contract's `400` envelope
-- ordering: `source_published_at` desc, `slug` desc tie-break — construct entries with equal timestamps to pin the tie-break
+- ordering: `source_published_at` desc, `slug` **asc** tie-break (matching the publish index contract) — construct entries with equal timestamps to pin the tie-break, and verify the cursor comparison direction matches the external order
 - an old item approved recently is excluded from "this week"; a recent item approved late is included (contract §3 consequences)
 - range older than `window_from` returns in-window matches, not an error
 
 Pagination:
 
 - cursor round-trip across pages yields gap-free, duplicate-free concatenation; `total_count` stable across pages; `next_cursor` null on final page; changing only `limit` between pages remains valid
-- generation switch between pages → `400` with code `cursor_expired`; language or normalized date-range change between pages → `400` with code `cursor_query_mismatch`; tampered cursor → `400`
+- generation switch between pages → `400` with code `cursor_expired`; language, normalized date-range, or `include` set change between pages → `400` with code `cursor_query_mismatch`; tampered cursor → `400`
+
+Projection (`include=bullets`):
+
+- default responses carry no `bullets` key at all
+- `include=bullets`: `publish_summary` items return the three-key object `{key_claim, evidence_level, objective_impact}`; `publish_link` items return `"bullets": null` — the key is never omitted
+- malformed `bullets` shape inside a resolved generation → `500`, never silently omitted
+- unknown value, empty entry, duplicated entry, or repeated `include` query key → `400`
+- `include=bullets` paginates cleanly across pages (gap-free, duplicate-free); changing `include` between pages → `400` `cursor_query_mismatch`; changing only `limit` remains valid
 
 Coverage and freshness:
 

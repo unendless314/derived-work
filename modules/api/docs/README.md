@@ -1,10 +1,8 @@
 # API Module
 
-**Document version:** v1.2
-**Updated:** 2026-09-02
+**Document version:** v1.3
+**Updated:** 2026-09-03
 **Status:** Approved for implementation (owner decision, 2026-09-02); documentation baseline complete, code not yet written
-**v1.1 changes (external review, 2026-09-02):** config map aligned with the fixed-loopback enforcement (no `host` key) and the explicit PyYAML pin.
-**v1.2 changes (follow-up review, 2026-09-02):** Key Responsibilities no longer enumerates error statuses — it references the contract's error table, so the list cannot drift.
 
 ---
 
@@ -31,7 +29,7 @@ Full boundary text in `MODULE_PROPOSAL.md` §4 (becomes `docs/MODULE_BOUNDARIES.
 
 ## 2. Key Responsibilities
 
-1. Serve `GET /v1/articles` with event-time (`source_published_at`) range filtering, total stable ordering, and generation-bound cursor pagination.
+1. Serve `GET /v1/articles` with event-time (`source_published_at`) range filtering, total stable ordering, generation-bound cursor pagination, and an opt-in `include=bullets` projection (default off).
 2. Declare coverage window and pipeline freshness on every response, so the agent can distinguish "no news" from "pipeline stale".
 3. Enforce single-token Bearer authentication as an anti-abuse control (the content is public; this is not a confidentiality boundary).
 4. Fail stop with the contract's error semantics (`API_CONTRACT.md` §4 error table); never fall back to stale generations, flat layouts, or directory scanning.

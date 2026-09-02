@@ -1,7 +1,7 @@
 # `api` Module — v1 Contract Draft
 
-**Status:** Draft v1.14 — the publish refactor is complete: Phase B1 landed 2026-08-18 (generation + `current.json` pointer based export, consumed by the site through the pointer) and Phase B2 (hardlink reuse) landed 2026-08-22 without changing the reader-visible contract. Refactor basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7. The api module is **approved for implementation (owner decision, 2026-09-02)** but not yet implemented. v1.9 change: data-source/adapter-boundary and language-authority rules (v1.8 §§5–6) moved to `DATA_DEPENDENCIES.md`; v1.8 §§7–8 renumbered to §§5–6. v1.10 change (external review, 2026-09-02): error-body shape defined (§1); `429` added to the error table with edge-emission semantics (§4). v1.11 change (follow-up review, 2026-09-02): TLS-edge `502` and `504` error semantics added so upstream-process failures cannot violate the JSON response contract. v1.12 change (follow-up review, 2026-09-02): application-generated `404` and `405` responses are included in the uniform error envelope. v1.13 change (follow-up review, 2026-09-02): cursors are bound to their normalized query filters and TLS-edge `413` is included in the uniform error contract. v1.14 change (2026-09-02): error table sorted ascending; caller guidance added recommending explicit `event_from`/`event_to` on multi-page reads (§4).
-**Updated:** 2026-09-02
+**Status:** Draft v1.15 — **approved for implementation (owner decision, 2026-09-02)**, not yet implemented. Builds on the completed publish generation-pointer refactor (Phase B1 landed 2026-08-18, Phase B2 2026-08-22; basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7).
+**Updated:** 2026-09-03
 
 **Scope:** v1 serves the deep-reader agent only. It is deliberately not designed as a general-purpose content API; generalization decisions are deferred until a second consumer exists.
 
@@ -55,7 +55,8 @@ GET /v1/articles?event_from=YYYY-MM-DD&event_to=YYYY-MM-DD&language=<code>&limit
 | `event_to` | no | today (UTC) | inclusive upper bound on `source_published_at` date |
 | `language` | no | `zh` | must be listed in `current.json` (`DATA_DEPENDENCIES.md` §3); unsupported codes return `400` with the supported list |
 | `limit` | no | `100` | max `500` |
-| `cursor` | no | — | opaque pagination token from a previous response for the same normalized `event_from`, `event_to`, and `language` |
+| `cursor` | no | — | opaque pagination token from a previous response for the same normalized `event_from`, `event_to`, `language`, and `include` set |
+| `include` | no | — | comma-separated projection list; the v1 allowlist is exactly `bullets`. Unknown values, empty entries, duplicated entries, or a repeated `include` query key return `400` |
 
 ### Response
 
@@ -94,15 +95,16 @@ GET /v1/articles?event_from=YYYY-MM-DD&event_to=YYYY-MM-DD&language=<code>&limit
 | `approved_at` | index entry | internal; reference only |
 | `published_at` | index entry | internal; reference only |
 | `downstream_action` | full item record (`items/`) | e.g. `publish_summary`, `publish_link`; tells the agent whether richer readable content exists or only the link |
+| `bullets` | full item record (`items/`) | opt-in — present only when `include=bullets` is passed, then present on **every** article in the page: the fixed three-key object `{key_claim, evidence_level, objective_impact}` on `publish_summary` items, `null` on `publish_link` items. Thin pass-through of publish semantics — never omitted, never re-derived. A malformed `bullets` shape is malformed generation data → `500`, never silently dropped |
 
-Deliberately excluded in v1: `category` (not present in the export; adding it requires a formal publish export contract extension), `bullets`, `disclosure_note`, `author_metadata` (not needed by the deep-reader).
+Deliberately excluded in v1: `category` (not present in the export; adding it requires a formal publish export contract extension), `disclosure_note`, `author_metadata` (not needed by the deep-reader). `bullets` is no longer excluded outright — it ships as the opt-in projection above, default off, so the baseline projection and its token cost are unchanged.
 
 ### Ordering and pagination
 
-- Sort: `source_published_at` descending; tie-breaker: `slug` descending (index entries carry no `source_item_id`, so `slug` is the stable tie-breaker at this layer). This makes ordering total and stable.
+- Sort: `source_published_at` descending; tie-breaker: `slug` **ascending**, matching the publish index contract (`modules/publish/docs/DATA_CONTRACT.md`: `source_published_at DESC, slug ASC`) — the filtered index is therefore already in response order, and the whole system shares one ordering convention. Index entries carry no `source_item_id`, so `slug` is the stable tie-breaker at this layer; the cursor's comparison direction must match this external order. (Pre-v1.15 drafts specified `slug` descending — corrected before implementation.) This makes ordering total and stable.
 - `total_count` = number of items matching the filter within the coverage window (all pages); `returned_count` = items in this response.
-- `cursor` is an opaque token encoding **the generation**, normalized `event_from`, `event_to`, and `language`, plus the last `(source_published_at, slug)` of the previous page. `next_cursor` is `null` on the final page. `limit` is deliberately not cursor-bound, so a caller may safely choose a different page size for its next request.
-- **Cursors are generation- and query-bound.** If the pointer's generation differs from the cursor's generation (a new generation was published between pages), the request fails with `400` and error code `cursor_expired`; the client must restart from the first page. If the cursor's normalized date range or language differs from the request, it fails with `400` and error code `cursor_query_mismatch`; the client must restart from the first page. The API must never silently mix pages from two generations or query filters — either would produce gaps, duplicates, and inconsistent `total_count`.
+- `cursor` is an opaque token encoding **the generation**, normalized `event_from`, `event_to`, `language`, and `include` set, plus the last `(source_published_at, slug)` of the previous page. `next_cursor` is `null` on the final page. `limit` is deliberately not cursor-bound — the only parameter with this exception — so a caller may safely choose a different page size for its next request.
+- **Cursors are generation- and query-bound.** If the pointer's generation differs from the cursor's generation (a new generation was published between pages), the request fails with `400` and error code `cursor_expired`; the client must restart from the first page. If the cursor's normalized date range, language, or `include` set differs from the request, it fails with `400` and error code `cursor_query_mismatch`; the client must restart from the first page. The API must never silently mix pages from two generations or query filters — either would produce gaps, duplicates, and inconsistent `total_count`. `include` changes only the projection, never membership or ordering, but a mid-read projection switch would silently weaken the single-consistent-query guarantee, so it is bound like the filters.
 - **Caller guidance:** for multi-page reads, pass `event_from` and `event_to` explicitly rather than relying on defaults. The cursor binds the *normalized* filters, and the defaults resolve "today" (UTC) at request time — a paginated read that crosses a UTC midnight with default parameters therefore fails with `cursor_query_mismatch`. Restarting from page 1 recovers cleanly, but explicit dates avoid the detour.
 
 ### Coverage and freshness semantics
@@ -120,7 +122,7 @@ Deliberately excluded in v1: `category` (not present in the export; adding it re
 
 | Status | Condition |
 |:---|:---|
-| `400` | malformed date; `event_from` > `event_to`; unsupported `language` (error body lists supported codes from `current.json`); `limit` out of range; invalid `cursor`; `cursor_expired` (cursor generation ≠ current pointer generation — restart from page 1); `cursor_query_mismatch` (cursor language or normalized date range ≠ request — restart from page 1) |
+| `400` | malformed date; `event_from` > `event_to`; unsupported `language` (error body lists supported codes from `current.json`); `limit` out of range; invalid `include` (unknown value, empty entry, duplicated entry, or a repeated `include` query key); invalid `cursor`; `cursor_expired` (cursor generation ≠ current pointer generation — restart from page 1); `cursor_query_mismatch` (cursor language, normalized date range, or `include` set ≠ request — restart from page 1) |
 | `401` | missing or invalid Bearer token; response carries `WWW-Authenticate: Bearer` (see `EXECUTION_POLICY.md` §4) |
 | `404` | no `/v1/` route matches the request; application-generated JSON body with error code `not_found` |
 | `405` | the request uses a method other than `GET` for an existing `/v1/` route; application-generated JSON body with error code `method_not_allowed` plus an `Allow: GET` header |
@@ -146,11 +148,11 @@ Pointer payload validation (field shapes, generation id format, no-fallback rule
 Two further consistency rules:
 
 - Because generation directories are immutable after publication, **no mid-read content revalidation exists**. The retry covers exactly one failure mode: the resolved generation being swept by retention at any point during the read. Within a live generation, drift is impossible by construction.
-- Pagination does **not** follow a generation or query-filter switch: cursors pin the generation and normalized query filters they were issued from (§4), so a multi-page read never silently mixes generations or filters. A client that hits `cursor_expired` or `cursor_query_mismatch` restarts from page 1 and gets a consistent series.
+- Pagination does **not** follow a generation, query-filter, or projection switch: cursors pin the generation, normalized query filters, and normalized `include` set they were issued from (§4), so a multi-page read never silently mixes generations, filters, or projections. A client that hits `cursor_expired` or `cursor_query_mismatch` restarts from page 1 and gets a consistent series.
 
 The consistency burden lives once in the writer (publish), not in every reader.
 
 ## 6. Versioning Policy
 
 - Breaking changes (field removal, type change, semantics change) require a new prefix (`/v2/`); `/v1/` must keep working while any consumer depends on it.
-- Additive changes (new optional fields, new optional parameters) may ship within `/v1/`.
+- Additive changes (new optional fields, new optional parameters) may ship within `/v1/`. New `include` projection values (e.g. a future `disclosure_note`) are additive and follow this rule; the default projection (no `include`) must never gain fields silently. For `bullets`, the name, type, `null` semantics, and three-key shape are breaking-change territory (`/v2/`).

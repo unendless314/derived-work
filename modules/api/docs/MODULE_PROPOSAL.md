@@ -1,6 +1,6 @@
 # `api` Module Proposal
 
-**Status:** Proposal v1.10 — **approved for implementation (owner decision, 2026-09-02)**; deployment and authentication decisions landed (§6, §8). Six external review rounds incorporated. **Phase A (mechanical split of publish's orchestrator) is completed and passed independent code review (2026-08-17)**. **Phase B1 (generation + atomic pointer) landed 2026-08-18** — the publish export is now generation + `current.json` pointer based, and the site-side consumption (resolver, pointer-driven "last updated", generationized fixture) landed with it. **Phase B2 (hardlink reuse optimization) landed 2026-08-22** without changing the reader-visible contract. Refactor basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7.
+**Status:** Proposal v1.10 — **approved for implementation (owner decision, 2026-09-02)**; deployment and authentication decisions landed (§6, §8). The publish generation-pointer refactor this module was gated on is complete (Phase B1 landed 2026-08-18, Phase B2 2026-08-22; basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7). Post-approval amendment (2026-09-03): `bullets` ships as the opt-in projection `include=bullets`, default off (§3.3).
 **Proposed:** 2026-08-17
 **Reversal plan:** delete `modules/api/` entirely and revert the §10 top-level doc additions once landed; no other module is affected.
 
@@ -50,7 +50,7 @@ A `llms.txt` at the site root declaring the endpoints may be added later as a lo
 
 ### 3.3 Scope discipline
 
-v1 serves the deep-reader agent only. It is deliberately **not** designed as a general-purpose content platform; fields not needed by the deep-reader (`bullets`, `disclosure_note`, `author_metadata`, `category`) are excluded, and historical-query capability (archives) is explicitly out of scope. Generalization is deferred until a second consumer exists.
+v1 serves the deep-reader agent only. It is deliberately **not** designed as a general-purpose content platform; fields not needed by the deep-reader (`disclosure_note`, `author_metadata`, `category`) are excluded, and historical-query capability (archives) is explicitly out of scope. Generalization is deferred until a second consumer exists. (Amended 2026-09-03: `bullets` left the exclusion list and ships as the opt-in projection `include=bullets`, default off — it improves the one existing consumer's triage decisions, and the page join already loads it; see `API_CONTRACT.md` §4.)
 
 ### 3.4 Why publish-refactor-first (owner architecture decision, 2026-08-17)
 

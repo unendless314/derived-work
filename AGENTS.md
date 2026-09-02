@@ -18,7 +18,7 @@ There is no repo-wide build or CI pipeline yet. Use lightweight local commands w
 When executable code is added, prefer module-local commands from `modules/<module>/`.
 
 ## Coding Style & Naming Conventions
-Use Markdown for planning docs and YAML for configuration. Keep prose direct and use fenced code blocks for commands or layouts.
+Use Markdown for planning docs and YAML for configuration. Keep prose direct and use fenced code blocks for commands or layouts. Document headers carry only the current status snapshot (version, updated date, one-line status); per-version change logs belong to git history, not the document.
 
 Naming patterns:
 

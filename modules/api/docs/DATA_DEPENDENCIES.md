@@ -1,7 +1,7 @@
 # `api` Module — Data Dependencies
 
-**Document version:** v1.0
-**Updated:** 2026-09-02
+**Document version:** v1.1
+**Updated:** 2026-09-03
 **Status:** Active draft (module approved for implementation 2026-09-02; not yet implemented)
 
 ---
@@ -31,6 +31,7 @@ Verified export layout facts (re-verified 2026-09-02 against the live generation
 
 - `index.json` holds the latest 1,000 items as slim entries, **sorted by `source_published_at` descending**; entry keys are exactly `slug`, `display_title`, `summary_short`, `canonical_url`, `source_published_at`, `approved_at`, `published_at` — index entries carry no `source_item_id`.
 - `items/<slug>.json` holds full self-contained records carrying `source_item_id`, `downstream_action`, `language_code`, `bullets`, `disclosure_note`, and `author_metadata` in addition to the index fields.
+- `bullets` is present on **every** item record: a fixed three-key object `{key_claim, evidence_level, objective_impact}` on `publish_summary` items, `null` on `publish_link` items (re-verified 2026-09-03 against the live snapshot: 1,500 sampled records, zero absent keys, zero other shapes). The API passes this through verbatim under the opt-in `include=bullets` projection; a malformed `bullets` shape is malformed generation data → `500`, never silently omitted.
 - `archives/archive_YYYY_MM.json` group by `source_published_at` month.
 
 Given the product constraint (recent-window queries only), the v1 adapter:
@@ -39,7 +40,7 @@ Given the product constraint (recent-window queries only), the v1 adapter:
 2. validates the requested language against the pointer's `languages` list (§3),
 3. reads `<lang>/index.json` (one file, already in event-time order),
 4. filters by event-time range and paginates,
-5. joins matched slugs against `<lang>/items/<slug>.json` for the full-record fields (`source_item_id`, `downstream_action`).
+5. joins matched slugs against `<lang>/items/<slug>.json` for the full-record fields (`source_item_id`, `downstream_action`, and `bullets` when the `include=bullets` projection is requested).
 
 It must **not** scan `items/` wholesale and must **not** stitch `index.json` + `archives/`. The archives and any derived full-set indexing are out of scope until a second consumer with historical query demand appears.
 
