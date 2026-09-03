@@ -22,7 +22,7 @@
 
 - **證據：** `modules/publish/tests` 與 `modules/analysis/tests` 在同一 pytest invocation 下因 tests package 同名而收集失敗，目前 workaround 是分開執行（已記於 [`TRANSLATION_LABEL_LEAKAGE_HANDOFF.md`](./resolved/TRANSLATION_LABEL_LEAKAGE_HANDOFF.md) §6）。
 - **影響：** 妨礙 §2.1 的 CI 單一指令化；新人容易踩到。
-- **方向：** 調整 tests 目錄的 package 結構（例如加 `__init__.py` 命名空間或改 rootdir 配置），讓全倉測試可一鍵執行。
+- **方向：** 調整 tests 目錄的 package 結構（例如加 `__init__.py` 命名空間或改 rootdir 配置 / `--import-mode=importlib`），讓全倉測試可一鍵執行（細部調查與驗證見獨立追蹤件：[`PYTEST_CROSS_MODULE_TEST_COLLECTION_COLLISION.md`](./PYTEST_CROSS_MODULE_TEST_COLLECTION_COLLISION.md)）。
 
 ### 2.3 orchestrator 單檔過大（god module 傾向）
 
