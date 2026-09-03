@@ -1,8 +1,8 @@
 # API Implementation Plan
 
 **Document version:** v1.6
-**Updated:** 2026-09-03
-**Status:** Active (approved for implementation 2026-09-02)
+**Updated:** 2026-09-04
+**Status:** Active (implemented 2026-09-03; approved for implementation 2026-09-02)
 
 ---
 

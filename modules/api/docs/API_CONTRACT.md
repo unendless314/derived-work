@@ -1,7 +1,7 @@
-# `api` Module — v1 Contract Draft
+# `api` Module — v1 Contract
 
-**Status:** Draft v1.15 — **approved for implementation (owner decision, 2026-09-02)**; implemented 2026-09-03. Builds on the completed publish generation-pointer refactor (Phase B1 landed 2026-08-18, Phase B2 2026-08-22; basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7).
-**Updated:** 2026-09-03
+**Status:** v1.15 — implemented 2026-09-03 (approved for implementation, owner decision 2026-09-02). Builds on the completed publish generation-pointer refactor (Phase B1 landed 2026-08-18, Phase B2 2026-08-22; basis: `known_issues/resolved/PUBLISH_EXPORT_GENERATION_POINTER_REFACTOR_PLAN.md` v7).
+**Updated:** 2026-09-04
 
 **Scope:** v1 serves the deep-reader agent only. It is deliberately not designed as a general-purpose content API; generalization decisions are deferred until a second consumer exists.
 

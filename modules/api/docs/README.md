@@ -1,8 +1,8 @@
 # API Module
 
 **Document version:** v1.3
-**Updated:** 2026-09-03
-**Status:** Approved for implementation (owner decision, 2026-09-02); documentation baseline complete, top-level doc sync landed 2026-09-03; v1 implemented (src/, config/, tests/) with the §4 contract-derived test suite green
+**Updated:** 2026-09-04
+**Status:** Implemented — v1 (src/, config/, tests/) with the §4 contract-derived test suite green; approved for implementation (owner decision, 2026-09-02); documentation baseline complete, top-level doc sync landed 2026-09-03
 
 ---
 

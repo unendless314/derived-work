@@ -3,7 +3,7 @@
 **Owner:** top-level documentation owner
 **Filed by:** `api` module top-level doc sync work (2026-09-03)
 **Date:** 2026-09-03
-**Status:** Open — deferred; current development focus is the `api` module
+**Status:** RESOLVED (2026-09-04) — fix applied to all four top-level docs per the scope below and passed review (dashboard coverage confirmed consistent with `MODULE_BOUNDARIES.md` §3.9; api module doc statuses unified to implemented in the same change); archived to `resolved/`
 
 ## Background
 

@@ -1,8 +1,8 @@
 # `api` Module — Data Dependencies
 
 **Document version:** v1.1
-**Updated:** 2026-09-03
-**Status:** Active draft (module approved for implementation 2026-09-02; implemented 2026-09-03)
+**Updated:** 2026-09-04
+**Status:** Active (implemented 2026-09-03; approved for implementation 2026-09-02)
 
 ---
 

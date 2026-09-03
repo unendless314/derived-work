@@ -1,7 +1,7 @@
 # System Overview
 
 **Status:** Active rewrite draft  
-**Updated:** 2026-09-03
+**Updated:** 2026-09-04
 
 ---
 
@@ -48,6 +48,7 @@ Read-Only Sidecar Path:
 canonical storage -> analysis
 ingest configuration -> analysis
 analysis -> reports/analysis/
+reports/analysis/ -> dashboard  (read-only rendering for operators)
 ```
 
 Publish Export Consumers:
@@ -213,6 +214,15 @@ Owns:
 - service transport and deployment form
 
 Serves publish-layer outputs read-only, resolved through the atomic `current.json` pointer; no canonical DB access. v1 serves the owner's deep-reader agent; module contract details live in `modules/api/docs/`.
+
+### 6.11 `dashboard`
+
+Owns:
+
+- read-only rendering of `analysis` JSON reports (`reports/analysis/`) as interactive charts and tables
+- dashboard UI configuration and supported schema-version declarations
+
+A pure presentation consumer of the `analysis` JSON contract; no canonical DB access, no metric recomputation. Module contract details live in `modules/dashboard/docs/`.
 
 ---
 

@@ -21,4 +21,4 @@ Current rewrite order:
 7. `MULTILINGUAL_CONTENT_STRATEGY.md`
 8. `IMPLEMENTATION_ROADMAP.md`
 
-Note: The active documentation set now also covers the integration positioning for the read-only downstream sidecar analysis module (see SYSTEM_OVERVIEW.md, MODULE_BOUNDARIES.md, CANONICAL_ENTITY_CONTRACT.md, DATA_LIFECYCLE.md, STORAGE_AND_RETENTION.md, and IMPLEMENTATION_ROADMAP.md).
+Note: The active documentation set now also covers the integration positioning for the read-only downstream sidecar analysis module (see SYSTEM_OVERVIEW.md, MODULE_BOUNDARIES.md, CANONICAL_ENTITY_CONTRACT.md, DATA_LIFECYCLE.md, STORAGE_AND_RETENTION.md, and IMPLEMENTATION_ROADMAP.md), its terminal read-only consumer, the dashboard module (see SYSTEM_OVERVIEW.md, MODULE_BOUNDARIES.md, DATA_LIFECYCLE.md, and IMPLEMENTATION_ROADMAP.md), and the read-only api query layer for the deep-reader agent over publish exports (see SYSTEM_OVERVIEW.md, MODULE_BOUNDARIES.md, DATA_LIFECYCLE.md, and IMPLEMENTATION_ROADMAP.md).

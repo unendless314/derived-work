@@ -1,7 +1,7 @@
 # Data Lifecycle
 
 **Status:** Active rewrite draft  
-**Updated:** 2026-09-03
+**Updated:** 2026-09-04
 
 ---
 
@@ -51,7 +51,7 @@ raw feed item
 
 Read-only Side-output:
 ```text
-canonical storage -> analysis -> reports/analysis/
+canonical storage -> analysis -> reports/analysis/ -> dashboard (read-only rendering)
 ```
 
 When an item is manually withdrawn:
@@ -236,6 +236,7 @@ The `analysis` module operates out-of-band as a downstream sidecar.
 - `analysis` reads canonical storage and static config assets
 - aggregates metrics and computes reporting outputs
 - writes derived report files to `reports/analysis/`
+- `dashboard` renders those report files as the terminal read-only consumer (no canonical DB access, no metric recomputation)
 
 ---
 

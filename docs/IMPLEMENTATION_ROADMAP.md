@@ -1,7 +1,7 @@
 # Implementation Roadmap
 
 **Status:** Active planning draft  
-**Updated:** 2026-09-03
+**Updated:** 2026-09-04
 
 ---
 
@@ -112,18 +112,23 @@ Goal:
 
 - align analytics and reporting tools with stable upstream canonical database schemas
 
-### Phase 8: Read-Only API Layer (Approved 2026-09-02, Awaiting Implementation)
+### Phase 8: Read-Only API Layer (Approved 2026-09-02, Implemented 2026-09-03)
 
-The `api` module specification is approved (owner decision, 2026-09-02) and its module-level documentation baseline is complete (`modules/api/docs/`); top-level contract docs were synced ahead of implementation.
-
-Expected work:
-
-- implement the read-only query service over publish exports (`GET /v1/articles`) per `modules/api/docs/API_CONTRACT.md`
-- service deployment, authentication, caching, and freshness signaling per `modules/api/docs/EXECUTION_POLICY.md`
+The `api` module is implemented (`modules/api/src/`, `tests/`): the read-only query service over publish exports (`GET /v1/articles`) per `modules/api/docs/API_CONTRACT.md`, with service deployment, authentication, caching, and freshness signaling per `modules/api/docs/EXECUTION_POLICY.md`. Its specification was approved by owner decision (2026-09-02); the module-level documentation baseline and top-level contract docs were synced ahead of implementation.
 
 Goal:
 
 - give the owner's deep-reader agent a stable, freshness-signalled query interface over publish exports without exposing canonical storage
+
+### Phase 9: Dashboard Layer (Completed)
+
+The `dashboard` module is implemented (`modules/dashboard/`): a read-only rendering layer over the `analysis` JSON reports stabilized in Phase 7, presenting pipeline funnel, source health, classification, translation, and curation diagnostics to operators.
+
+Its ownership boundary is locked in `MODULE_BOUNDARIES.md` §3.9: `dashboard` is a pure presentation consumer of the `analysis` JSON contract, with no canonical DB access and no metric recomputation. Module contract details live in `modules/dashboard/docs/`.
+
+Goal:
+
+- give operators interactive visibility into analysis reporting outputs without exposing canonical storage
 
 ---
 
@@ -169,6 +174,6 @@ This deferral applies to extracting `edit` as a separately executable module, no
 
 ## 6. Immediate Next Step
 
-As upstream contracts (ingest through publish/site) have stabilized, the next concrete step should be:
+The previously recorded next step — aligning `modules/analysis/docs/` and the analysis implementation with the stabilized canonical schema and the top-level documentation set — is complete; the `dashboard` module has since landed as the read-only rendering consumer of analysis reports (see Phase 9), and the `api` module is implemented (see Phase 8).
 
-- align `modules/analysis/docs/` and implementation work with the stabilized canonical schema and the recently approved top-level documentation set.
+The next concrete focus is an owner decision and is not yet recorded here.
