@@ -1,0 +1,10 @@
+{
+  "generation": "2026-08-05T15-23-51Z",
+  "export_completed_at": "2026-08-05T15:23:51Z",
+  "last_successful_run_at": "2026-08-05T15:23:51Z",
+  "languages": [
+    "zh",
+    "en"
+  ],
+  "content_fingerprint": "sha256-exportstate-v1:0000000000000000000000000000000000000000000000000000000000000000"
+}

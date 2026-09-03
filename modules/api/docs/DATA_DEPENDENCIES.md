@@ -2,7 +2,7 @@
 
 **Document version:** v1.1
 **Updated:** 2026-09-03
-**Status:** Active draft (module approved for implementation 2026-09-02; not yet implemented)
+**Status:** Active draft (module approved for implementation 2026-09-02; implemented 2026-09-03)
 
 ---
 
@@ -32,6 +32,8 @@ Verified export layout facts (re-verified 2026-09-02 against the live generation
 - `index.json` holds the latest 1,000 items as slim entries, **sorted by `source_published_at` descending**; entry keys are exactly `slug`, `display_title`, `summary_short`, `canonical_url`, `source_published_at`, `approved_at`, `published_at` — index entries carry no `source_item_id`.
 - `items/<slug>.json` holds full self-contained records carrying `source_item_id`, `downstream_action`, `language_code`, `bullets`, `disclosure_note`, and `author_metadata` in addition to the index fields.
 - `bullets` is present on **every** item record: a fixed three-key object `{key_claim, evidence_level, objective_impact}` on `publish_summary` items, `null` on `publish_link` items (re-verified 2026-09-03 against the live snapshot: 1,500 sampled records, zero absent keys, zero other shapes). The API passes this through verbatim under the opt-in `include=bullets` projection; a malformed `bullets` shape is malformed generation data → `500`, never silently omitted.
+- Read-side validation is fail-stop in parity with the publish writer (`modules/publish/src/validation.py`): index `slug`s must match the slugify charset `^[a-z0-9]+(-[a-z0-9]+)*$` before the `items/` join — slugs double as filename keys, so no absolute path or traversal segment ever reaches the filesystem (verified 2026-09-03 against 3,000 live slugs); `downstream_action` is exactly `publish_summary` or `publish_link` (served on every article, so validated with or without the projection); and under the projection the `bullets` shape is bound to `downstream_action` (`null` on publish_link, the three-key object with non-empty-after-trim string values on publish_summary). An artifact that is not valid UTF-8 is malformed generation data likewise. Any violation → `500` `malformed_export`.
+- The index is trusted but verified before use: served fields must carry valid values, not merely be present (`display_title`/`summary_short`/`canonical_url` non-empty strings; `approved_at`/`published_at` calendar-valid ISO-8601 UTC timestamps — `source_published_at` keeps its lenient counted-and-skipped semantics); slugs must be unique across the index — a duplicate join key would join the same item record into multiple articles; entries must already be in the contract order (`source_published_at` DESC, `slug` ASC, over the event-time-parseable subsequence), because cursor pagination relies on that order and a misordered index would silently skip records; and each joined item record's own `slug` and `language_code` must match the join, so index fields and record fields from different items can never be mixed into one response. Any violation → `500` `malformed_export`.
 - `archives/archive_YYYY_MM.json` group by `source_published_at` month.
 
 Given the product constraint (recent-window queries only), the v1 adapter:
@@ -62,7 +64,7 @@ The pointer contract is identical across all three parties: the writer (`modules
 
 - `generation` matches `^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z(-r\d+)?$` (strict Windows-safe id; validated before it ever reaches the filesystem, so no arbitrary string becomes a path component).
 - `export_completed_at` / `last_successful_run_at` match `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$` and are calendar-valid (the regex pins the shape; a parse round-trip rejects impossible dates such as February 30).
-- `languages` is a non-empty list of strings.
+- `languages` is a non-empty list of strings, each matching `^[a-z0-9]+(-[a-z0-9]+)*$` (the publish writer emits lowercase codes such as `zh`/`en`/`ja`). Entries double as generation path components (`generations/<id>/<lang>/`), so this module validates the safe form before any join — stricter than the site reader, deliberately: no absolute path or traversal segment ever reaches the filesystem.
 - `content_fingerprint` matches `^sha256-exportstate-v1:[0-9a-f]{64}$`.
 - the referenced `generations/<generation>/` directory exists and is a directory.
 

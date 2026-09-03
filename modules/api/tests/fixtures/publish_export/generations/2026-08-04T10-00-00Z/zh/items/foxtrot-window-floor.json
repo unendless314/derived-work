@@ -1,0 +1,23 @@
+{
+  "source_item_id": 106,
+  "language_code": "zh",
+  "slug": "foxtrot-window-floor",
+  "display_title": "窗口下緣事件",
+  "summary_short": "位於索引窗口下緣附近的事件。",
+  "bullets": {
+    "key_claim": "Key claim for foxtrot-window-floor.",
+    "evidence_level": "Evidence level for foxtrot-window-floor.",
+    "objective_impact": "Objective impact for foxtrot-window-floor."
+  },
+  "canonical_url": "https://example.com/foxtrot-window-floor",
+  "source_published_at": "2026-07-20T07:15:00Z",
+  "approved_at": "2026-07-21T09:00:00Z",
+  "published_at": "2026-07-22T03:00:00Z",
+  "downstream_action": "publish_summary",
+  "disclosure_note": "This item is AI-assisted and human-curated.",
+  "author_metadata": {
+    "source_module": "edit",
+    "writer_type": "human",
+    "editor": "john_doe"
+  }
+}

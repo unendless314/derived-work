@@ -35,6 +35,7 @@ modules/api/
     test_pointer.py
     test_adapter.py
     test_cursor.py
+    test_config.py
     test_api_contract.py
     test_auth.py
 ```
@@ -85,6 +86,7 @@ Conventions followed: `python -m modules.api.src.cli <command>` (publish/transla
 Pointer and language authority:
 
 - valid pointer resolves; generation id failing the regex (including path-traversal-shaped strings) → `503`, never a path join
+- `languages` entries failing the safe path-component form (e.g. `../en`) → invalid pointer → `503`, never a path join
 - calendar-impossible timestamp (`2026-02-30T00:00:00Z`) → invalid pointer → `503`
 - missing `current.json` (bootstrap state) → `503` with `Retry-After`
 - **stale residue at export root:** a valid pointer plus unlisted pre-refactor directories (the real 2026-08-05 residue shape, `DATA_DEPENDENCIES.md` §3) → requests for an unlisted `language` return `400` with the supported list; residue is never served
@@ -92,6 +94,7 @@ Pointer and language authority:
 Configuration and binding:
 
 - a YAML `host:` key (or any unknown key) is a fail-fast validation error
+- duplicate YAML mapping keys (any level) are a fail-fast validation error — PyYAML's last-wins behavior is disabled, so a stray key can never be silently discarded
 - the service binds the fixed loopback constant: no YAML key, CLI flag, or environment variable can produce a non-loopback bind
 - token env var unset → `validate` fails, `serve` refuses to start
 
@@ -107,13 +110,13 @@ Query semantics:
 Pagination:
 
 - cursor round-trip across pages yields gap-free, duplicate-free concatenation; `total_count` stable across pages; `next_cursor` null on final page; changing only `limit` between pages remains valid
-- generation switch between pages → `400` with code `cursor_expired`; language, normalized date-range, or `include` set change between pages → `400` with code `cursor_query_mismatch`; tampered cursor → `400`
+- generation switch between pages → `400` with code `cursor_expired`; language, normalized date-range, or `include` set change between pages → `400` with code `cursor_query_mismatch`; tampered cursor → `400` — including a shape-valid re-encoded payload carrying the original signature (HMAC mismatch), which must fail closed rather than silently shift the page position; the signing key is a server-only random secret generated at startup, never derived from the Bearer token, so the caller cannot sign cursors itself
 
 Projection (`include=bullets`):
 
 - default responses carry no `bullets` key at all
 - `include=bullets`: `publish_summary` items return the three-key object `{key_claim, evidence_level, objective_impact}`; `publish_link` items return `"bullets": null` — the key is never omitted
-- malformed `bullets` shape inside a resolved generation → `500`, never silently omitted
+- malformed `bullets` shape inside a resolved generation → `500`, never silently omitted — including a `null` on a `publish_summary` item, an object on a `publish_link` item, blank values, and an unknown `downstream_action` (writer-validation parity); an unsafe index `slug` (absolute path or traversal segment) → `500` before any path join; a non-UTF-8 artifact → `500` `malformed_export`, never the unhandled `internal_error`
 - unknown value, empty entry, duplicated entry, or repeated `include` query key → `400`
 - `include=bullets` paginates cleanly across pages (gap-free, duplicate-free); changing `include` between pages → `400` `cursor_query_mismatch`; changing only `limit` remains valid
 
@@ -127,6 +130,7 @@ Consistency and failure model:
 
 - generation swept mid-read (delete the generation directory between resolution and join, via monkeypatch) → transparent single retry against the new pointer; second sweep → `503` + `Retry-After`
 - malformed `index.json` inside a resolved generation → `500` (no retry)
+- index trust-but-verify: a wrong-typed or empty served field (`display_title: null` etc.), an index violating the contract order (`source_published_at` DESC, `slug` ASC — construct a newer entry after an older one and prove pagination fails closed instead of silently skipping), or an item record whose own `slug`/`language_code` does not match the join → `500` `malformed_export`
 - every response carries `Cache-Control: no-store`
 - all application error bodies match the `{"error": {"code", "message", ...}}` shape (`API_CONTRACT.md` §1), including malformed-query `400`, authentication `401`, unknown-route `404`, and method `405` responses; the nginx `413`, `429`, `502`, and `504` edge paths are verified manually in Phase 5, not here
 

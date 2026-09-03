@@ -1,0 +1,23 @@
+{
+  "source_item_id": 104,
+  "language_code": "zh",
+  "slug": "delta-late-approval",
+  "display_title": "延遲核准的近日事件",
+  "summary_short": "事件發生於 8/3，但 8/5 才核准（事件時間語義測試）。",
+  "bullets": {
+    "key_claim": "Key claim for delta-late-approval.",
+    "evidence_level": "Evidence level for delta-late-approval.",
+    "objective_impact": "Objective impact for delta-late-approval."
+  },
+  "canonical_url": "https://example.com/delta-late-approval",
+  "source_published_at": "2026-08-03T16:45:00Z",
+  "approved_at": "2026-08-05T08:00:00Z",
+  "published_at": "2026-08-05T15:23:51Z",
+  "downstream_action": "publish_summary",
+  "disclosure_note": "This item is AI-assisted and human-curated.",
+  "author_metadata": {
+    "source_module": "edit",
+    "writer_type": "human",
+    "editor": "john_doe"
+  }
+}

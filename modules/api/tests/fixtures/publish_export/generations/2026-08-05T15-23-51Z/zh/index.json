@@ -1,0 +1,56 @@
+[
+  {
+    "slug": "echo-evening-briefing",
+    "display_title": "晚間簡報：國會聽證最新進展",
+    "summary_short": "今日晚間簡報彙整國會聽證與官方回應的重點。",
+    "canonical_url": "https://example.com/echo-evening-briefing",
+    "source_published_at": "2026-08-05T12:00:00Z",
+    "approved_at": "2026-08-05T10:20:00Z",
+    "published_at": "2026-08-05T15:23:51Z"
+  },
+  {
+    "slug": "alpha-tie-break",
+    "display_title": "雷達資料公開（甲）",
+    "summary_short": "與 bravo-tie-break 同時間戳，用於排序平局測試。",
+    "canonical_url": "https://example.com/alpha-tie-break",
+    "source_published_at": "2026-08-04T09:00:00Z",
+    "approved_at": "2026-08-04T09:25:00Z",
+    "published_at": "2026-08-04T10:00:00Z"
+  },
+  {
+    "slug": "bravo-tie-break",
+    "display_title": "雷達資料公開（乙）",
+    "summary_short": "與 alpha-tie-break 同時間戳，用於排序平局測試。",
+    "canonical_url": "https://example.com/bravo-tie-break",
+    "source_published_at": "2026-08-04T09:00:00Z",
+    "approved_at": "2026-08-04T09:30:00Z",
+    "published_at": "2026-08-04T10:00:00Z"
+  },
+  {
+    "slug": "delta-late-approval",
+    "display_title": "延遲核准的近日事件",
+    "summary_short": "事件發生於 8/3，但 8/5 才核准（事件時間語義測試）。",
+    "canonical_url": "https://example.com/delta-late-approval",
+    "source_published_at": "2026-08-03T16:45:00Z",
+    "approved_at": "2026-08-05T08:00:00Z",
+    "published_at": "2026-08-05T15:23:51Z"
+  },
+  {
+    "slug": "foxtrot-window-floor",
+    "display_title": "窗口下緣事件",
+    "summary_short": "位於索引窗口下緣附近的事件。",
+    "canonical_url": "https://example.com/foxtrot-window-floor",
+    "source_published_at": "2026-07-20T07:15:00Z",
+    "approved_at": "2026-07-21T09:00:00Z",
+    "published_at": "2026-07-22T03:00:00Z"
+  },
+  {
+    "slug": "charlie-old-event",
+    "display_title": "舊事件近日核准",
+    "summary_short": "2025 年的舊事件，2026-08-04 才核准（不得出現在「本週」）。",
+    "canonical_url": "https://example.com/charlie-old-event",
+    "source_published_at": "2025-11-10T08:00:00Z",
+    "approved_at": "2026-08-04T09:50:00Z",
+    "published_at": "2026-08-04T10:00:00Z"
+  }
+]

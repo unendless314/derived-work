@@ -1,0 +1,20 @@
+# API Module Configuration Settings (v1.0)
+
+service:
+  # The bind address is a fixed constant (127.0.0.1) enforced in code
+  # (EXECUTION_POLICY.md §3); it is deliberately absent here.
+  # Only the port is configurable.
+  port: 8010
+
+export:
+  # Default publish export root, resolved against the workspace root.
+  # Overridden by the API_PUBLISH_EXPORT_DIR environment variable.
+  export_dir: "data/publish_export"
+
+freshness:
+  # data_may_be_stale flips when now - last_successful_run_at exceeds this.
+  freshness_sla_hours: 6
+
+auth:
+  # Name of the environment variable carrying the Bearer token.
+  token_env_var: "EXOPOLITICS_API_TOKEN"

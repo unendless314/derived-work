@@ -1,0 +1,11 @@
+[
+  {
+    "slug": "alpha-tie-break",
+    "display_title": "Radar data release (A)",
+    "summary_short": "Shares a timestamp with bravo-tie-break for tie-break tests.",
+    "canonical_url": "https://example.com/alpha-tie-break",
+    "source_published_at": "2026-08-04T09:00:00Z",
+    "approved_at": "2026-08-04T09:25:00Z",
+    "published_at": "2026-08-04T10:00:00Z"
+  }
+]

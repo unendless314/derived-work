@@ -1,0 +1,15 @@
+{
+  "total_active_published_items_by_language": {
+    "zh": 4,
+    "en": 1
+  },
+  "total_withdrawn_items_by_language": {
+    "zh": 0,
+    "en": 0
+  },
+  "latest_index_count_by_language": {
+    "zh": 4,
+    "en": 1
+  },
+  "last_export_run_timestamp": "2026-08-04T10:00:00Z"
+}

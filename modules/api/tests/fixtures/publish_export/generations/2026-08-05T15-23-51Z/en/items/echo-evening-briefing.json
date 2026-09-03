@@ -1,0 +1,23 @@
+{
+  "source_item_id": 105,
+  "language_code": "en",
+  "slug": "echo-evening-briefing",
+  "display_title": "Evening briefing: hearing update",
+  "summary_short": "Evening briefing on the hearing and official responses.",
+  "bullets": {
+    "key_claim": "Key claim for echo-evening-briefing.",
+    "evidence_level": "Evidence level for echo-evening-briefing.",
+    "objective_impact": "Objective impact for echo-evening-briefing."
+  },
+  "canonical_url": "https://example.com/echo-evening-briefing",
+  "source_published_at": "2026-08-05T12:00:00Z",
+  "approved_at": "2026-08-05T10:20:00Z",
+  "published_at": "2026-08-05T15:23:51Z",
+  "downstream_action": "publish_summary",
+  "disclosure_note": "This item is AI-assisted and human-curated.",
+  "author_metadata": {
+    "source_module": "edit",
+    "writer_type": "human",
+    "editor": "john_doe"
+  }
+}

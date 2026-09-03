@@ -1,0 +1,23 @@
+{
+  "source_item_id": 105,
+  "language_code": "zh",
+  "slug": "echo-evening-briefing",
+  "display_title": "晚間簡報：國會聽證最新進展",
+  "summary_short": "今日晚間簡報彙整國會聽證與官方回應的重點。",
+  "bullets": {
+    "key_claim": "Key claim for echo-evening-briefing.",
+    "evidence_level": "Evidence level for echo-evening-briefing.",
+    "objective_impact": "Objective impact for echo-evening-briefing."
+  },
+  "canonical_url": "https://example.com/echo-evening-briefing",
+  "source_published_at": "2026-08-05T12:00:00Z",
+  "approved_at": "2026-08-05T10:20:00Z",
+  "published_at": "2026-08-05T15:23:51Z",
+  "downstream_action": "publish_summary",
+  "disclosure_note": "This item is AI-assisted and human-curated.",
+  "author_metadata": {
+    "source_module": "edit",
+    "writer_type": "human",
+    "editor": "john_doe"
+  }
+}

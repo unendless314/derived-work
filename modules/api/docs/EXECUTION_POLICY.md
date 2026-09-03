@@ -2,7 +2,7 @@
 
 **Document version:** v1.4
 **Updated:** 2026-09-03
-**Status:** Active draft (module approved for implementation 2026-09-02; not yet implemented)
+**Status:** Active draft (module approved for implementation 2026-09-02; implemented 2026-09-03)
 
 ---
 
@@ -15,7 +15,7 @@ This document defines how the `api` service is operated: process form, network e
 ## 2. Service Form
 
 - The service is launched as a CLI command, matching repo module conventions:
-  - `python -m modules.api.src.cli validate` — loads configuration, validates it, checks that the export root is readable, and exits non-zero on any failure. Does **not** require `current.json` to exist (bootstrap is a runtime `503` state, not a config error).
+  - `python -m modules.api.src.cli validate` — loads configuration, validates it, checks that the export root exists and is readable/traversable by the service account (an unreadable root would otherwise pass startup and surface later as a misleading per-request `503`/`500`), and exits non-zero on any failure. Does **not** require `current.json` to exist (bootstrap is a runtime `503` state, not a config error).
   - `python -m modules.api.src.cli serve` — starts uvicorn with the FastAPI app, bound to the fixed loopback address (§3) on the configured port.
 - On the production VPS the process runs under a systemd unit (`exopolitics-api.service`, `Restart=on-failure`), alongside the existing `exopolitics-pipeline.timer`. The unit file itself is ops material, kept out of the repo; its requirements are: working directory at the repo root, the token environment variable provided via the unit's `EnvironmentFile` (not committed), and journald logging.
 - Single process. No workers fan-out, no background threads, no scheduled tasks inside the service.
@@ -42,6 +42,9 @@ location /v1/ {
     error_page 413 = @api_payload_too_large;
     error_page 502 = @api_bad_gateway;
     error_page 504 = @api_gateway_timeout;
+    # The upstream port must match service.port in config/api_settings.yaml
+    # (§5) — this block assumes the default; a mismatch makes every proxied
+    # request a 502.
     proxy_pass http://127.0.0.1:8010;
     proxy_set_header Host $host;
 }
@@ -74,6 +77,7 @@ location @api_gateway_timeout {
 }
 ```
 
+- The `proxy_pass` upstream port above must match `service.port` in `config/api_settings.yaml` (§5): the port is the one configurable network value, and the reference block assumes the default `8010`. A deployment that configures a different port must update the upstream in the same change, or nginx proxies to a closed port and every `/v1/` request returns `502`.
 - Rate limiting lives at the nginx layer, keyed on `$binary_remote_addr`; 30 r/m with a small burst fits the single daily batch caller and blocks basic abuse. The service itself implements no rate limiting in v1.
 - **Throttling semantics:** the edge returns `429` with a JSON body and `Retry-After`, never nginx's default HTML `503`. `503` stays reserved for "publish export not serveable", so the caller can distinguish throttling from pipeline failure (`API_CONTRACT.md` §4).
 - **Request-body semantics:** v1 exposes only `GET`, so clients must not send a request body. nginx limits `/v1/` request bodies to `1k`; an oversized body receives edge-generated JSON `413` with code `payload_too_large`. It is a request error, not a transient condition, so it carries no `Retry-After`.
@@ -88,6 +92,7 @@ location @api_gateway_timeout {
 - v1 issues **one** long-lived token to the single known caller. No per-client identities, OAuth, or rotation machinery until a second caller exists (proposal §8.2).
 - The token is read from the environment variable named by `token_env_var` (default `EXOPOLITICS_API_TOKEN`). If the variable is unset or empty at startup, `validate` fails and `serve` refuses to start — running without authentication is not a supported mode.
 - Comparison uses a constant-time primitive (`hmac.compare_digest`). The token is never written to logs, error bodies, config files, or the repository; the caller stores it in an env file or secret store on its own side.
+- Pagination cursors are HMAC-signed with a server-only random secret generated at each service start (`cursor.py: generate_cursor_secret`): never persisted, never derived from the Bearer token (the caller holds it and could otherwise sign cursors itself), and never leaves the process. A service restart invalidates outstanding cursors; clients restart pagination from page 1 (`API_CONTRACT.md` §4).
 - Rotation is manual: replace the value in the systemd `EnvironmentFile`, restart the unit, update the caller.
 
 ---
@@ -101,7 +106,8 @@ location @api_gateway_timeout {
 
 service:
   # The bind address is a fixed constant (127.0.0.1) enforced in code (§3);
-  # it is deliberately absent here. Only the port is configurable.
+  # it is deliberately absent here. Only the port is configurable — the
+  # nginx upstream in §3 must be kept aligned with it.
   port: 8010
 
 export:
@@ -118,7 +124,7 @@ auth:
   token_env_var: "EXOPOLITICS_API_TOKEN"
 ```
 
-Precedence: environment variable (`API_PUBLISH_EXPORT_DIR`) > `export_dir` config > built-in default. The port comes from config; the bind address is fixed (§3); the token always comes from the environment, never from YAML. Unknown YAML keys are a fail-fast validation error.
+Precedence: environment variable (`API_PUBLISH_EXPORT_DIR`) > `export_dir` config > built-in default. The port comes from config; the bind address is fixed (§3); the token always comes from the environment, never from YAML. Unknown YAML keys are a fail-fast validation error. Duplicate YAML mapping keys are likewise fail-fast — PyYAML's default last-wins behavior is disabled, so a stray key (e.g. a first `service:` block carrying `host:`) can never be silently discarded by a later block.
 
 ---
 
@@ -159,7 +165,7 @@ Fail-stop, mapping to the contract error table:
 
 | Condition | Result |
 |:---|:---|
-| Config invalid at startup (bad YAML, unknown key, missing token env var, nonexistent explicit export-dir override) | `validate` exits non-zero; `serve` refuses to start |
+| Config invalid at startup (bad YAML, unknown key, missing token env var, nonexistent explicit export-dir override, existing but unreadable/untraversable export root) | `validate` exits non-zero; `serve` refuses to start |
 | `current.json` missing/invalid at request time (including bootstrap) | `503` + `Retry-After: 30` |
 | Generation swept mid-read, retry exhausted | `503` + `Retry-After: 30` |
 | Malformed data inside a resolved generation (including a malformed `bullets` shape on a requested projection — never silently omitted) | `500` |

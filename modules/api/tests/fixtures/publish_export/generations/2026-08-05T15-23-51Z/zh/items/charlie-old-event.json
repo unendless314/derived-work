@@ -1,0 +1,19 @@
+{
+  "source_item_id": 103,
+  "language_code": "zh",
+  "slug": "charlie-old-event",
+  "display_title": "舊事件近日核准",
+  "summary_short": "2025 年的舊事件，2026-08-04 才核准（不得出現在「本週」）。",
+  "bullets": null,
+  "canonical_url": "https://example.com/charlie-old-event",
+  "source_published_at": "2025-11-10T08:00:00Z",
+  "approved_at": "2026-08-04T09:50:00Z",
+  "published_at": "2026-08-04T10:00:00Z",
+  "downstream_action": "publish_link",
+  "disclosure_note": "This item is AI-assisted and human-curated.",
+  "author_metadata": {
+    "source_module": "edit",
+    "writer_type": "human",
+    "editor": "john_doe"
+  }
+}

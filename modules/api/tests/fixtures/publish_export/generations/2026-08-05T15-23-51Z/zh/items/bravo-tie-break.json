@@ -1,0 +1,19 @@
+{
+  "source_item_id": 102,
+  "language_code": "zh",
+  "slug": "bravo-tie-break",
+  "display_title": "雷達資料公開（乙）",
+  "summary_short": "與 alpha-tie-break 同時間戳，用於排序平局測試。",
+  "bullets": null,
+  "canonical_url": "https://example.com/bravo-tie-break",
+  "source_published_at": "2026-08-04T09:00:00Z",
+  "approved_at": "2026-08-04T09:30:00Z",
+  "published_at": "2026-08-04T10:00:00Z",
+  "downstream_action": "publish_link",
+  "disclosure_note": "This item is AI-assisted and human-curated.",
+  "author_metadata": {
+    "source_module": "edit",
+    "writer_type": "human",
+    "editor": "john_doe"
+  }
+}

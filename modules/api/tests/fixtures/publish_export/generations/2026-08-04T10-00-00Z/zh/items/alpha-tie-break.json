@@ -1,0 +1,23 @@
+{
+  "source_item_id": 101,
+  "language_code": "zh",
+  "slug": "alpha-tie-break",
+  "display_title": "雷達資料公開（甲）",
+  "summary_short": "與 bravo-tie-break 同時間戳，用於排序平局測試。",
+  "bullets": {
+    "key_claim": "Key claim for alpha-tie-break.",
+    "evidence_level": "Evidence level for alpha-tie-break.",
+    "objective_impact": "Objective impact for alpha-tie-break."
+  },
+  "canonical_url": "https://example.com/alpha-tie-break",
+  "source_published_at": "2026-08-04T09:00:00Z",
+  "approved_at": "2026-08-04T09:25:00Z",
+  "published_at": "2026-08-04T10:00:00Z",
+  "downstream_action": "publish_summary",
+  "disclosure_note": "This item is AI-assisted and human-curated.",
+  "author_metadata": {
+    "source_module": "edit",
+    "writer_type": "human",
+    "editor": "john_doe"
+  }
+}

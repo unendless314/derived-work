@@ -2,7 +2,7 @@
 
 **Document version:** v1.3
 **Updated:** 2026-09-03
-**Status:** Approved for implementation (owner decision, 2026-09-02); documentation baseline complete, top-level doc sync landed 2026-09-03; code not yet written
+**Status:** Approved for implementation (owner decision, 2026-09-02); documentation baseline complete, top-level doc sync landed 2026-09-03; v1 implemented (src/, config/, tests/) with the §4 contract-derived test suite green
 
 ---
 
@@ -49,8 +49,6 @@ Full boundary text in `MODULE_PROPOSAL.md` §4 (mirrored as `docs/MODULE_BOUNDAR
 - Environment variables: `API_PUBLISH_EXPORT_DIR` (export root override, mirrors the site's convention), and the Bearer token variable named by `token_env_var` (default `EXOPOLITICS_API_TOKEN`) — the token itself never enters the repository.
 
 ## 5. Minimal CLI Usage
-
-(Planned; delivered by Phase 1 of `IMPLEMENTATION_PLAN.md`.)
 
 Validate configuration and export-root assumptions:
 
