@@ -123,7 +123,7 @@ Remaining: none blocking v1.
 
 This proposal was **approved on 2026-09-02**. The module doc set is now: `README.md` (entry point), `API_CONTRACT.md` (wire contract), `DATA_DEPENDENCIES.md` (read scope and pointer validation), `EXECUTION_POLICY.md` (deployment, authentication, caching, freshness), and `IMPLEMENTATION_PLAN.md` (phases and test focus). This proposal is retained as the historical decision record (`site/docs/DESIGN_PROPOSAL.md` precedent).
 
-With approval granted, `src/`, `config/`, and `tests/` scaffolds and executable code are in scope; per §10 the top-level doc updates land in the same implementation change.
+With approval granted, `src/`, `config/`, and `tests/` scaffolds and executable code are in scope; the §10 top-level doc updates landed ahead of implementation on 2026-09-03 and are not part of the implementation change.
 
 ## 10. On Approval, the Implementation Change Must Also Update
 
@@ -134,3 +134,5 @@ With approval granted, `src/`, `config/`, and `tests/` scaffolds and executable 
 - `docs/DATA_LIFECYCLE.md` — record `api` as a downstream consumer of publish exports
 - `docs/IMPLEMENTATION_ROADMAP.md` — add the `api` work item
 - `AGENTS.md` — module list and ownership rules, if it enumerates modules
+
+**Update (2026-09-03):** all five updates above landed ahead of implementation as a contract-first documentation sync; the implementation change no longer needs to carry them.

@@ -4,7 +4,7 @@
 This repository is a phased, modular UAP/UFO aggregation system plan. Top-level contracts live in `docs/`; implementation work belongs in `modules/<module>/` with `docs/`, `config/`, `src/`, and `tests/`.
 
 Planned module sequence:
-`ingest -> classify -> curate -> edit (when needed) -> translate -> publish -> site` (with `analysis` operating as a read-only sidecar observer)
+`ingest -> classify -> curate -> edit (when needed) -> translate -> publish -> site` (with `analysis` operating as a read-only sidecar observer, and `api` serving publish exports read-only to the deep-reader agent as a downstream sibling of `site`)
 
 The active module workspace has been reset. Archived pre-reset module trees live under `modules_archive/`; new implementation work should restart under `modules/` and preserve future module boundaries.
 
@@ -37,6 +37,7 @@ Respect module boundaries from `docs/MODULE_BOUNDARIES.md`:
 - `translate`: multilingual translations and display title refinement
 - `publish`: export and disclosure emission
 - `site`: render published outputs only; no canonical DB writes
+- `api`: read-only query layer over publish exports for the deep-reader agent; same consumption scope as `site` (live generation via `current.json`); no canonical DB access
 - `analysis`: read-only diagnostics, operational reporting, and metric aggregation
 - `dashboard`: read-only rendering of `analysis` JSON reports; no DB access, no metric recomputation
 

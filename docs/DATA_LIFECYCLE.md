@@ -1,7 +1,7 @@
 # Data Lifecycle
 
 **Status:** Active rewrite draft  
-**Updated:** 2026-08-18
+**Updated:** 2026-09-03
 
 ---
 
@@ -45,7 +45,8 @@ raw feed item
             -> approved content record (finalized mother-draft)
             -> translation output (completed translated records)
             -> publish export
-            -> site rendering
+                 |-- site rendering (for humans)
+                 |-- api query serving (for the deep-reader agent)
 ```
 
 Read-only Side-output:
@@ -218,6 +219,8 @@ Publish does not promote files in place. Instead:
 - generation lifecycle: retention keeps the newest 5 generations plus the live generation, which is always protected; generations that are symlinks/junctions are skipped with a warning
 
 The site must consume publish output, not canonical operational tables directly.
+
+The `api` module is a second read-only consumer of the same publish output: like `site`, it resolves the live generation exclusively through the atomic `current.json` pointer and never touches canonical storage.
 
 ---
 

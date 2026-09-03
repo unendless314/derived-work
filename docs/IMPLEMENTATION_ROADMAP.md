@@ -1,7 +1,7 @@
 # Implementation Roadmap
 
 **Status:** Active planning draft  
-**Updated:** 2026-07-09
+**Updated:** 2026-09-03
 
 ---
 
@@ -111,6 +111,19 @@ Only after upstream schema, config ownership, and lifecycle contracts are stable
 Goal:
 
 - align analytics and reporting tools with stable upstream canonical database schemas
+
+### Phase 8: Read-Only API Layer (Approved 2026-09-02, Awaiting Implementation)
+
+The `api` module specification is approved (owner decision, 2026-09-02) and its module-level documentation baseline is complete (`modules/api/docs/`); top-level contract docs were synced ahead of implementation.
+
+Expected work:
+
+- implement the read-only query service over publish exports (`GET /v1/articles`) per `modules/api/docs/API_CONTRACT.md`
+- service deployment, authentication, caching, and freshness signaling per `modules/api/docs/EXECUTION_POLICY.md`
+
+Goal:
+
+- give the owner's deep-reader agent a stable, freshness-signalled query interface over publish exports without exposing canonical storage
 
 ---
 

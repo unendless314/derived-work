@@ -1,7 +1,7 @@
 # Module Boundaries
 
 **Status:** Active rewrite draft  
-**Updated:** 2026-08-18
+**Updated:** 2026-09-03
 
 ---
 
@@ -245,6 +245,31 @@ Must not own:
 Important boundary:
 
 - `dashboard` is a pure presentation consumer of the `analysis` JSON contract; it must never open `canonical.db` or recompute metrics from raw records
+
+### 3.10 `api`
+
+Owns:
+
+- the external read-only contract: endpoints, response schemas, and versioning (`/v1/` prefix)
+- query semantics: event-time (`source_published_at`) range filtering, stable ordering, cursor pagination, coverage and freshness declaration
+- transport and deployment form (local service, bind address, port)
+- response caching policy
+
+May read:
+
+- publish-layer outputs only (`data/publish_export/`, via the `current.json` pointer) — identical consumption scope to `site`
+
+Must not own:
+
+- canonical DB access or writes
+- export shape, generation layout, or slug generation (owned by `publish`)
+- pipeline execution
+- content lifecycle state changes (e.g. withdraw decisions)
+- the set of supported languages (authoritative source: `current.json`; directory existence is not evidence)
+
+Important boundary:
+
+- `api` is a downstream-only sibling of `site`; both resolve the live publish generation read-only through the atomic `current.json` pointer
 
 ---
 

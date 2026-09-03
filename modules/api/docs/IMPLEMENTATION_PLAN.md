@@ -75,7 +75,7 @@ Conventions followed: `python -m modules.api.src.cli <command>` (publish/transla
 
 - systemd unit requirements and the nginx reference block (with `limit_req_zone`, `limit_req_status 429`, and the JSON `error_page` handler) are specified in `EXECUTION_POLICY.md` §§2–3; deployment on the VPS is an owner operation.
 - **Ops verification after nginx reload:** an oversized-body request returns JSON `413` with `Cache-Control: no-store`; a request burst returns JSON `429` with `Retry-After` and `Cache-Control: no-store` (not HTML `503`), and normal requests pass through to the service. In a controlled maintenance window, stop the API unit briefly to verify the TLS edge returns JSON `502` with `Retry-After` and `Cache-Control: no-store`, then restore the unit; validate the `504` handler with the deployment's nginx configuration test procedure. These paths live at the edge and cannot be covered by pytest; they are manual deployment checklist items.
-- Top-level documentation, landed in the same change (proposal §10): `docs/MODULE_BOUNDARIES.md` (new §3.10 from proposal §4), `docs/SYSTEM_OVERVIEW.md` (module sequence/diagram), `docs/DATA_LIFECYCLE.md` (downstream consumer entry), `docs/IMPLEMENTATION_ROADMAP.md` (work item), `AGENTS.md` (module list).
+- Top-level documentation already landed ahead of implementation (2026-09-03; proposal §10 update): `docs/MODULE_BOUNDARIES.md` §3.10, `docs/SYSTEM_OVERVIEW.md`, `docs/DATA_LIFECYCLE.md`, `docs/IMPLEMENTATION_ROADMAP.md`, `AGENTS.md`. No further top-level doc work in this phase — verify only that the delivered implementation still matches those contract-level statements.
 - Verify README CLI examples against the delivered commands.
 
 ---

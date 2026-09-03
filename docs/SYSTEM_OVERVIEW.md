@@ -1,7 +1,7 @@
 # System Overview
 
 **Status:** Active rewrite draft  
-**Updated:** 2026-08-18
+**Updated:** 2026-09-03
 
 ---
 
@@ -48,6 +48,14 @@ Read-Only Sidecar Path:
 canonical storage -> analysis
 ingest configuration -> analysis
 analysis -> reports/analysis/
+```
+
+Publish Export Consumers:
+
+```text
+publish export (live generation via current.json)
+  -> site  (public presentation for humans)
+  -> api   (read-only query layer for the deep-reader agent)
 ```
 
 ---
@@ -196,6 +204,15 @@ Owns:
 Important rule:
 
 - `analysis` does not own operational decisions or canonical state changes.
+
+### 6.10 `api`
+
+Owns:
+
+- the read-only query contract over publish exports (endpoints, response schemas, query semantics, versioning)
+- service transport and deployment form
+
+Serves publish-layer outputs read-only, resolved through the atomic `current.json` pointer; no canonical DB access. v1 serves the owner's deep-reader agent; module contract details live in `modules/api/docs/`.
 
 ---
 

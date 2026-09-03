@@ -2,7 +2,7 @@
 
 **Document version:** v1.3
 **Updated:** 2026-09-03
-**Status:** Approved for implementation (owner decision, 2026-09-02); documentation baseline complete, code not yet written
+**Status:** Approved for implementation (owner decision, 2026-09-02); documentation baseline complete, top-level doc sync landed 2026-09-03; code not yet written
 
 ---
 
@@ -21,7 +21,7 @@ v1 serves exactly one consumer: an AI deep-reader agent on the owner's home mach
 
 ### 1.1 Boundary Summary
 
-Full boundary text in `MODULE_PROPOSAL.md` §4 (becomes `docs/MODULE_BOUNDARIES.md` §3.10 in the implementation change). In short:
+Full boundary text in `MODULE_PROPOSAL.md` §4 (mirrored as `docs/MODULE_BOUNDARIES.md` §3.10). In short:
 
 - **Owns:** the `/v1/` wire contract, query semantics (event-time filtering, ordering, cursor pagination, coverage/freshness declaration), transport and deployment form, response caching policy.
 - **May read:** publish-layer outputs only (`data/publish_export/` via the `current.json` pointer).
